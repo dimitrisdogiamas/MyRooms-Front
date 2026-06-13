@@ -16,4 +16,15 @@ class ApiService {
       throw Exception("Failed to fetch rooms: ${response.statusCode}");
     }
   }
+
+
+  Future<Room> fetchRoomById(int id) async {
+    final response = await http.get(Uri.parse("$baseUrl/rooms/$id"));
+    if (response.statusCode == 200){
+      final dynamic data = jsonDecode(response.body);
+      return Room.fromJson(data);
+    } else {
+      throw Exception("Failed to fetch room: ${response.statusCode}");
+    }
+  }
 }
