@@ -4,7 +4,7 @@ import 'package:meldim/models/room.dart';
 
 
 class ApiService {
-  final String baseUrl ="http://localhost:8000";
+  final String baseUrl = "http://192.168.1.58:8000";
 
 
   Future<List<Room>> fetchRooms() async {

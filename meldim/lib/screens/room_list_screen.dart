@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:meldim/models/room.dart';
 import 'package:meldim/services/api.dart';
-
+import 'package:meldim/screens/room_detail_screen.dart';
 class RoomListScreen extends StatefulWidget {
   const RoomListScreen({super.key});
 
@@ -62,6 +62,9 @@ class _RoomListScreenState extends State<RoomListScreen> {
         return ListTile(
           title: Text(room.title),
           subtitle: Text('€${room.price_per_night}/night · ${room.max_guests} guests'),
+          onTap: () {
+            Navigator.push(context, MaterialPageRoute(builder: (context) => RoomDetailScreen(roomId: room.id)));
+          }
         );
       },
     );
