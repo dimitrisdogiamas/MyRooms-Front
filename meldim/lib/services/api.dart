@@ -4,7 +4,7 @@ import 'package:meldim/models/room.dart';
 
 
 class ApiService {
-  final String baseUrl ="http://localhost:8000";
+  final String baseUrl = "http://192.168.1.58:8000";
 
 
   Future<List<Room>> fetchRooms() async {
@@ -14,6 +14,17 @@ class ApiService {
       return data.map((json) => Room.fromJson(json)).toList(); // this is the list of rooms
     } else {
       throw Exception("Failed to fetch rooms: ${response.statusCode}");
+    }
+  }
+
+
+  Future<Room> fetchRoomById(int id) async {
+    final response = await http.get(Uri.parse("$baseUrl/rooms/$id"));
+    if (response.statusCode == 200){
+      final dynamic data = jsonDecode(response.body);
+      return Room.fromJson(data);
+    } else {
+      throw Exception("Failed to fetch room: ${response.statusCode}");
     }
   }
 }
