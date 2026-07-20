@@ -1,14 +1,33 @@
 import * as Device from 'expo-device';
 import { Platform, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
+import { useState } from 'react';
 import { AnimatedIcon } from '@/components/animated-icon';
 import { HintRow } from '@/components/hint-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { WebBadge } from '@/components/web-badge';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Calendar, CalendarList, Agenda } from 'react-native-calendars';
+import { Pressable } from 'react-native';
+import { supabase } from '@/lib/supabase';
+import { useEffect } from 'react';
 
+type RoomAvailability = {
+  [dateString: string]: {
+    color: string;
+    textColor: string;
+    startingDay?: boolean;
+    endingDay?: boolean;
+  }
+}
+
+type RoomsAvailability = {
+  room1: RoomAvailability;
+  room2: RoomAvailability;
+};
+
+type RoomKey = 'room1' | 'room2';
 function getDevMenuHint() {
   if (Platform.OS === 'web') {
     return <ThemedText type="small">use browser devtools</ThemedText>;
@@ -29,70 +48,116 @@ function getDevMenuHint() {
 }
 
 export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+  const [selectedRoom, setSelectedRoom] = useState<RoomKey>('room1');
+  const [selectStartDate, setSelectStartDate] = useState<string | null>(null);
 
-        <ThemedText type="code" style={styles.code}>
-          get started
+  // availability of each room 
+  const [roomAvailability, setRoomAvailability] = useState<RoomsAvailability>({
+    room1: {},
+    room2: {},
+  });
+
+
+  async function handleDayPress(dateString: string) {
+    if (!selectStartDate) {
+      setSelectStartDate(dateString);
+      return;
+    }
+
+    // second tap calculate the range and mark the dates
+    const startDate = new Date(selectStartDate);
+    const endDate = new Date(dateString);
+    const diffDates = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+
+    if (diffDates < 5) {
+      alert("Η κράτηση πρέπει να είναι τουλάχιστον 5 ημέρες.");
+      setSelectStartDate(null);
+      return;
+    }
+
+    // supabase connection 
+    const { error } = await supabase.from('bookings').insert([{
+      room_id: selectedRoom,
+      start_date: selectStartDate,
+      end_date: dateString
+    }]);
+
+    if (error) {
+      alert("Σφάλμα κατά την αποθήκευση της κράτησης: " + error.message);
+      setSelectStartDate(null);
+      return;
+    }
+
+    //valid range 
+    const newMarkedDates: RoomAvailability = {};
+
+    const currentDate = new Date(startDate);
+    while (currentDate <= endDate) {
+      const iso = currentDate.toISOString().split('T')[0];
+      newMarkedDates[iso] = {
+        color: '#e74c3c',
+        textColor: '#ffffff',
+        startingDay: iso === selectStartDate,
+        endingDay: iso === dateString,
+      };
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    setRoomAvailability((prev) => ({
+      ...prev,
+      [selectedRoom]: {
+        ...prev[selectedRoom],
+        ...newMarkedDates,
+      },
+    }));
+
+    setSelectStartDate(null);
+  }
+    return (
+      <SafeAreaView>
+        <ThemedText>
+          Welcome to {`Mel&Dim Resort`}
         </ThemedText>
+      
+        <Pressable onPress={() => setSelectedRoom('room1')}>
+          <ThemedText>
+            Room 1
+          </ThemedText>
+        </Pressable>
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
+        <Pressable onPress={() => setSelectedRoom('room2')}>
+          <ThemedText>
+            Room 2
+          </ThemedText>
+        </Pressable>
 
-        {Platform.OS === 'web' && <WebBadge />}
+        <ThemedText>Επιλεγμένο δωμάτιο: {selectedRoom}</ThemedText>
+
+        <Calendar
+          markingType="period"
+          style={styles.Calendar}
+          current={'2026-07-18'}
+          markedDates={roomAvailability[selectedRoom]}
+          onDayPress={(day) => { handleDayPress(day.dateString) }}
+        >
+        
+        </Calendar>
+
       </SafeAreaView>
-    </ThemedView>
-  );
-}
+    );
+  }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
-  },
-});
+
+  const styles = StyleSheet.create({
+    SafeAreaView: {
+      flex: 1,
+      padding: 16,
+      backgroundColor: '#fff',
+    },
+    Calendar: {
+      width: '100%',
+      height: 350,
+      alignSelf: 'center',
+    },
+  });
