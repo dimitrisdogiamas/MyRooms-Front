@@ -12,6 +12,10 @@ import { Calendar, CalendarList, Agenda } from 'react-native-calendars';
 import { Pressable } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { useEffect } from 'react';
+import RoomsSelector from '@/components/RoomsSelector';
+import { RoomKey } from '@/components/RoomsSelector';
+import { ImageBackground } from 'react-native';
+import { BookingsList } from '@/components/BookingsList';
 
 type RoomAvailability = {
   [dateString: string]: {
@@ -27,7 +31,6 @@ type RoomsAvailability = {
   room2: RoomAvailability;
 };
 
-type RoomKey = 'room1' | 'room2';
 function getDevMenuHint() {
   if (Platform.OS === 'web') {
     return <ThemedText type="small">use browser devtools</ThemedText>;
@@ -50,7 +53,7 @@ function getDevMenuHint() {
 export default function HomeScreen() {
   const [selectedRoom, setSelectedRoom] = useState<RoomKey>('room1');
   const [selectStartDate, setSelectStartDate] = useState<string | null>(null);
-
+  const [refreshKey, setRefreshKey] = useState(0);
   // availability of each room 
   const [roomAvailability, setRoomAvailability] = useState<RoomsAvailability>({
     room1: {},
@@ -112,27 +115,23 @@ export default function HomeScreen() {
       },
     }));
 
+    setRefreshKey((prev) => prev + 1); // trigger re-render
+
     setSelectStartDate(null);
   }
-    return (
+
+  return (
+      <ImageBackground 
+        source={require('@/assets/images/licensed-image.jpg')}
+        style={styles.backgroundImage}
+    resizeMode="cover"
+    >
       <SafeAreaView>
         <ThemedText>
           Welcome to {`Mel&Dim Resort`}
         </ThemedText>
       
-        <Pressable onPress={() => setSelectedRoom('room1')}>
-          <ThemedText>
-            Room 1
-          </ThemedText>
-        </Pressable>
-
-        <Pressable onPress={() => setSelectedRoom('room2')}>
-          <ThemedText>
-            Room 2
-          </ThemedText>
-        </Pressable>
-
-        <ThemedText>Επιλεγμένο δωμάτιο: {selectedRoom}</ThemedText>
+        <RoomsSelector selectedRoom={selectedRoom} onSelectRoom={setSelectedRoom} />
 
         <Calendar
           markingType="period"
@@ -144,7 +143,13 @@ export default function HomeScreen() {
         
         </Calendar>
 
+        <ThemedText style={{ marginTop: 20, marginBottom: 8, fontWeight: '700' }}>
+          Οι κρατήσεις σας 
+        </ThemedText>
+        <BookingsList  refreshKey={refreshKey} />
+
       </SafeAreaView>
+      </ImageBackground>
     );
   }
 
@@ -159,5 +164,9 @@ export default function HomeScreen() {
       width: '100%',
       height: 350,
       alignSelf: 'center',
+    },
+    backgroundImage: {
+      flex: 1,
+      resizeMode: 'cover',
     },
   });
