@@ -3,12 +3,15 @@ import { ThemedText } from './themed-text';
 import { FlatList, View, Pressable, StyleSheet } from 'react-native';
 import type { Room } from './RoomsSelector';
 import { Brand } from '@/constants/theme';
+import { useState } from 'react';
 
 export type Booking = {
   id: string;
   room_id: string;
   start_date: string;
   end_date: string;
+  /** Σημείωση αναχώρησης / πρόωρης εξόδου */
+  departure_note?: string | null;
 };
 
 export type BookingsListProps = {
@@ -16,6 +19,7 @@ export type BookingsListProps = {
   loading: boolean;
   onCancelled: () => void;
   rooms: Room[];
+  departure_note?: string | null;
 };
 
 export const BookingsList = ({
@@ -23,7 +27,15 @@ export const BookingsList = ({
   loading,
   onCancelled,
   rooms,
+  departure_note,
 }: BookingsListProps) => {
+
+  const [departureNote, setDepartureNote] = useState<string | null>();
+  const [noteText, setNoteText] = useState<string>('');
+  
+
+
+
   function getRoomName(roomId: string) {
     return rooms.find((room) => room.id === roomId)?.name ?? '—';
   }

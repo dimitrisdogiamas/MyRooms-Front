@@ -59,7 +59,9 @@ function buildAvailabilityFromBookings(bookings: Booking[]): RoomsAvailability {
 
 export default function PropertyScreen() {
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
-  const [selectStartDate, setSelectStartDate] = useState<string | null>(null);
+  const [selectStartByRoom, setSelectStartByRoom] = useState<
+    Record<string, string | null>
+  >({});
   const [refreshKey, setRefreshKey] = useState(0);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -110,7 +112,7 @@ export default function PropertyScreen() {
 
     const { data: bookingData, error: bookingsError } = await supabase
       .from('bookings')
-      .select('id, room_id, start_date, end_date')
+      .select('id, room_id, start_date, end_date, departure_note')
       .in('room_id', roomIds)
       .order('start_date', { ascending: true });
 
@@ -151,9 +153,11 @@ export default function PropertyScreen() {
     return (data ?? []).length > 0;
   }
 
-  async function handleDayPress(dateString: string) {
+  async function handleDayPress(room: Room, dateString: string) {
+    const selectStartDate = selectStartByRoom[room.id] ?? null;
+
     if (!selectStartDate) {
-      setSelectStartDate(dateString);
+      setSelectStartByRoom((prev) => ({ ...prev, [room.id]: dateString }));
       return;
     }
 
@@ -166,28 +170,22 @@ export default function PropertyScreen() {
 
     if (diffDates < 5) {
       alert('Η κράτηση πρέπει να είναι τουλάχιστον 5 ημέρες.');
-      setSelectStartDate(null);
+      setSelectStartByRoom((prev) => ({ ...prev, [room.id]: null }));
       return;
     }
 
-    if (!selectedRoom?.id) return;
-
-    const isOverlap = await overlapCheck(
-      selectStartDate,
-      dateString,
-      selectedRoom.id,
-    );
+    const isOverlap = await overlapCheck(selectStartDate, dateString, room.id);
     if (isOverlap) {
       alert(
         'Η επιλεγμένη περίοδος επικαλύπτεται με υπάρχουσα κράτηση. Παρακαλώ επιλέξτε άλλη περίοδο.',
       );
-      setSelectStartDate(null);
+      setSelectStartByRoom((prev) => ({ ...prev, [room.id]: null }));
       return;
     }
 
     const { error } = await supabase.from('bookings').insert([
       {
-        room_id: selectedRoom.id,
+        room_id: room.id,
         start_date: selectStartDate,
         end_date: dateString,
       },
@@ -195,29 +193,42 @@ export default function PropertyScreen() {
 
     if (error) {
       alert('Σφάλμα κατά την αποθήκευση της κράτησης: ' + error.message);
-      setSelectStartDate(null);
+      setSelectStartByRoom((prev) => ({ ...prev, [room.id]: null }));
       return;
     }
 
-    setSelectStartDate(null);
+    setSelectStartByRoom((prev) => ({ ...prev, [room.id]: null }));
     setRefreshKey((prev) => prev + 1);
   }
 
-  const markedDates = selectedRoom
-    ? {
-        ...(roomAvailability[selectedRoom.id] ?? {}),
-        ...(selectStartDate
-          ? {
-              [selectStartDate]: {
-                color: Brand.gold,
-                textColor: Brand.white,
-                startingDay: true,
-                endingDay: true,
-              },
-            }
-          : {}),
-      }
-    : {};
+  function markedDatesForRoom(roomId: string) {
+    const selectStartDate = selectStartByRoom[roomId] ?? null;
+    return {
+      ...(roomAvailability[roomId] ?? {}),
+      ...(selectStartDate
+        ? {
+            [selectStartDate]: {
+              color: Brand.gold,
+              textColor: Brand.white,
+              startingDay: true,
+              endingDay: true,
+            },
+          }
+        : {}),
+    };
+  }
+
+  const calendarTheme = {
+    backgroundColor: Brand.white,
+    calendarBackground: Brand.white,
+    textSectionTitleColor: Brand.claySoft,
+    selectedDayBackgroundColor: Brand.gold,
+    todayTextColor: Brand.goldDark,
+    dayTextColor: Brand.ink,
+    arrowColor: Brand.clay,
+    monthTextColor: Brand.ink,
+    textMonthFontWeight: '700' as const,
+  };
 
   return (
     <View style={styles.root}>
@@ -239,9 +250,7 @@ export default function PropertyScreen() {
               <Text style={styles.heroEyebrow}>Mel&Dim Resort</Text>
               <Text style={styles.heroTitle}>{propertyName}</Text>
               <Text style={styles.heroSubtitle}>
-                {selectedRoom
-                  ? `Δωμάτιο: ${selectedRoom.name}`
-                  : 'Επίλεξε δωμάτιο για κράτηση'}
+                Ξεχωριστό ημερολόγιο για κάθε δωμάτιο
               </Text>
             </View>
 
@@ -251,17 +260,11 @@ export default function PropertyScreen() {
                 propertyId={propertyId}
                 selectedRoom={selectedRoom}
                 onSelectRoom={setSelectedRoom}
+                onRoomsChanged={fetchPropertyData}
               />
             </View>
 
-            <View style={styles.panel}>
-              <Text style={styles.panelTitle}>Ημερολόγιο</Text>
-              <Text style={styles.hint}>
-                {selectStartDate
-                  ? `Έναρξη: ${selectStartDate} — πάτα ημερομηνία λήξης (min 5 μέρες)`
-                  : 'Πάτα ημερομηνία έναρξης, μετά ημερομηνία λήξης'}
-              </Text>
-
+            <View style={styles.legendPanel}>
               <View style={styles.legend}>
                 <View style={styles.legendItem}>
                   <View
@@ -279,38 +282,54 @@ export default function PropertyScreen() {
                   <Text style={styles.legendText}>Αναχώρηση</Text>
                 </View>
               </View>
-
-              <Calendar
-                markingType="period"
-                style={styles.calendar}
-                theme={{
-                  backgroundColor: Brand.white,
-                  calendarBackground: Brand.white,
-                  textSectionTitleColor: Brand.claySoft,
-                  selectedDayBackgroundColor: Brand.gold,
-                  todayTextColor: Brand.goldDark,
-                  dayTextColor: Brand.ink,
-                  arrowColor: Brand.clay,
-                  monthTextColor: Brand.ink,
-                  textMonthFontWeight: '700',
-                }}
-                current={'2026-07-18'}
-                markedDates={markedDates}
-                onDayPress={(day) => {
-                  handleDayPress(day.dateString);
-                }}
-              />
             </View>
 
-            <View style={styles.panel}>
-              <Text style={styles.panelTitle}>Κρατήσεις</Text>
-              <BookingsList
-                bookings={bookings}
-                loading={loading}
-                onCancelled={fetchPropertyData}
-                rooms={rooms}
-              />
-            </View>
+            {rooms.length === 0 ? (
+              <View style={styles.panel}>
+                <Text style={styles.hint}>
+                  Πρόσθεσε ένα δωμάτιο για να εμφανιστεί το ημερολόγιό του.
+                </Text>
+              </View>
+            ) : (
+              rooms.map((room) => {
+                const start = selectStartByRoom[room.id] ?? null;
+                const roomBookings = bookings.filter(
+                  (b) => b.room_id === room.id,
+                );
+
+                return (
+                  <View key={room.id} style={styles.panel}>
+                    <Text style={styles.panelTitle}>{room.name}</Text>
+                    <Text style={styles.hint}>
+                      {start
+                        ? `Έναρξη: ${start} — πάτα ημερομηνία λήξης (min 5 μέρες)`
+                        : 'Πάτα ημερομηνία έναρξης, μετά ημερομηνία λήξης'}
+                    </Text>
+
+                    <Calendar
+                      markingType="period"
+                      style={styles.calendar}
+                      theme={calendarTheme}
+                      current={'2026-07-18'}
+                      markedDates={markedDatesForRoom(room.id)}
+                      onDayPress={(day) => {
+                        handleDayPress(room, day.dateString);
+                      }}
+                    />
+
+                    <Text style={styles.bookingsTitle}>
+                      Κρατήσεις — {room.name}
+                    </Text>
+                    <BookingsList
+                      bookings={roomBookings}
+                      loading={loading}
+                      onCancelled={fetchPropertyData}
+                      rooms={rooms}
+                    />
+                  </View>
+                );
+              })
+            )}
           </ScrollView>
         </SafeAreaView>
       </ImageBackground>
@@ -368,11 +387,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Brand.sandDeep,
   },
+  legendPanel: {
+    backgroundColor: 'rgba(247, 241, 234, 0.9)',
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
   panelTitle: {
     fontSize: 17,
     fontWeight: '700',
     color: Brand.ink,
     marginBottom: 10,
+  },
+  bookingsTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Brand.clay,
+    marginTop: 14,
+    marginBottom: 8,
   },
   hint: {
     fontSize: 13,
@@ -383,7 +415,6 @@ const styles = StyleSheet.create({
   legend: {
     flexDirection: 'row',
     gap: 16,
-    marginBottom: 12,
   },
   legendItem: {
     flexDirection: 'row',

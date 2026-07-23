@@ -13,12 +13,14 @@ type RoomsSelectorProps = {
   propertyId: string;
   selectedRoom: Room | null;
   onSelectRoom: (room: Room) => void;
+  onRoomsChanged?: () => void;
 };
 
 const RoomsSelector = ({
   propertyId,
   selectedRoom,
   onSelectRoom,
+  onRoomsChanged,
 }: RoomsSelectorProps) => {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [adding, setAdding] = useState(false);
@@ -53,7 +55,8 @@ const RoomsSelector = ({
     }
     setNewRoomName('');
     setAdding(false);
-    fetchRooms();
+    await fetchRooms();
+    onRoomsChanged?.();
   }
 
   return (
