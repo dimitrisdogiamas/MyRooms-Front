@@ -1,118 +1,116 @@
-import { useState } from 'react';
-import { useEffect } from 'react';
-import { useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { ThemedText } from './themed-text';
-import { FlatList, View } from 'react-native';
-import { Pressable , StyleSheet} from 'react-native';
+import { FlatList, View, Pressable, StyleSheet } from 'react-native';
+import type { Room } from './RoomsSelector';
+import { Brand } from '@/constants/theme';
 
-type Booking = {
+export type Booking = {
   id: string;
-  room: string;
-  startDate: string;
-  endDate: string;
-}
-
-type BookingsListProps = {
-  refreshKey: number;
+  room_id: string;
+  start_date: string;
+  end_date: string;
 };
 
+export type BookingsListProps = {
+  bookings: Booking[];
+  loading: boolean;
+  onCancelled: () => void;
+  rooms: Room[];
+};
 
-export const BookingsList = ({ refreshKey }: BookingsListProps) => {
-
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-
-
-  // fetch bookings from supabase when the refreshKey changes
-  const fetchBookings = useCallback(async () => {
-    setLoading(true);
-    const { data, error } = await supabase.from('bookings').select('*').order('start_date', { ascending: true });
-    if (error) {
-      console.error('Error fetching bookings:', error);
-    } else {
-      setBookings(data);
-    }
-    setLoading(false);
-  }, []);
-
-  // refetch bookings when the refreshKey changes
-  useEffect(() => {
-    fetchBookings();
-
-  }, [fetchBookings, refreshKey]);
-
+export const BookingsList = ({
+  bookings,
+  loading,
+  onCancelled,
+  rooms,
+}: BookingsListProps) => {
+  function getRoomName(roomId: string) {
+    return rooms.find((room) => room.id === roomId)?.name ?? '—';
+  }
 
   async function handleCancel(id: string) {
     const { error } = await supabase.from('bookings').delete().eq('id', id);
     if (error) {
       console.error('Error cancelling booking:', error);
     } else {
-      // refetch bookings after cancellation
-      fetchBookings();
+      onCancelled();
     }
   }
 
   if (loading) {
-    return <ThemedText>Φόρτωση Κρατήσεων...</ThemedText>;
+    return <ThemedText style={styles.muted}>Φόρτωση Κρατήσεων...</ThemedText>;
   }
 
   if (bookings.length === 0) {
-    return <ThemedText>Δεν υπάρχουν κρατήσεις.</ThemedText>;
+    return <ThemedText style={styles.muted}>Δεν υπάρχουν κρατήσεις.</ThemedText>;
   }
 
   return (
     <FlatList
       data={bookings}
       keyExtractor={(item) => item.id}
+      scrollEnabled={false}
       renderItem={({ item }) => (
-        <View>
-        <View style={styles.row}>
-          <ThemedText>
-            {item.id === 'room1' ? 'Δωμάτιο 1' : 'Δωμάτιο 2'}
-          </ThemedText>
-          <ThemedText>
-            {item.startDate} - {item.endDate}
-          </ThemedText>
-        </View>
-        <Pressable style={styles.cancelButton} onPress={() => handleCancel(item.id)}>
-          <ThemedText style={styles.cancelText}>Ακύρωση</ThemedText>
-        </Pressable>
+        <View style={styles.card}>
+          <View style={styles.row}>
+            <ThemedText style={styles.roomLabel}>
+              {getRoomName(item.room_id)}
+            </ThemedText>
+            <ThemedText style={styles.dates}>
+              {item.start_date} – {item.end_date}
+            </ThemedText>
+          </View>
+          <Pressable
+            style={styles.cancelButton}
+            onPress={() => handleCancel(item.id)}
+          >
+            <ThemedText style={styles.cancelText}>Ακύρωση</ThemedText>
+          </Pressable>
         </View>
       )}
-    >
-    </FlatList>
-  )
-}
+    />
+  );
+};
 
 const styles = StyleSheet.create({
+  muted: {
+    color: Brand.claySoft,
+    fontSize: 14,
+  },
+  card: {
+    backgroundColor: Brand.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Brand.sandDeep,
+    padding: 12,
+    marginBottom: 10,
+  },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    },
+    marginBottom: 10,
+    gap: 8,
+  },
   roomLabel: {
-    fontWeight: '600',
+    fontWeight: '700',
+    color: Brand.ink,
+    flexShrink: 1,
   },
   dates: {
-    color: '#666',
+    color: Brand.claySoft,
     fontSize: 13,
   },
-
   cancelButton: {
+    alignSelf: 'flex-end',
     paddingVertical: 6,
     paddingHorizontal: 12,
-    backgroundColor: '#e74c3c',
-    borderRadius: 6,
+    backgroundColor: Brand.danger,
+    borderRadius: 8,
   },
-
   cancelText: {
-    color: '#fff',
+    color: Brand.white,
     fontSize: 13,
     fontWeight: '600',
-  }
-  })
+  },
+});
