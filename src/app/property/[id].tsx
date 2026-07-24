@@ -2,6 +2,8 @@ import { Brand } from '@/constants/theme';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import {
   ImageBackground,
+  Modal,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -68,9 +70,12 @@ export default function PropertyScreen() {
   const [roomAvailability, setRoomAvailability] = useState<RoomsAvailability>(
     {},
   );
+  const [noteBooking, setNoteBooking] = useState<Booking | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [propertyName, setPropertyName] = useState('Κράτηση');
   const { id: propertyId } = useLocalSearchParams<{ id: string }>();
+  const [needsSheets, setNeedsSheets] = useState(false);
+  const [earlyCheckout, setEarlyCheckout] = useState(false);
 
   const fetchPropertyData = useCallback(async () => {
     setLoading(true);
@@ -151,6 +156,49 @@ export default function PropertyScreen() {
     }
 
     return (data ?? []).length > 0;
+  }
+
+  async function handleDayLongPress(room: Room, dateString: string) {
+    const booking = bookings.find(
+      (b) => b.room_id === room.id && b.end_date === dateString,
+    );
+    if (!booking) {
+      alert('Δεν είναι η μέρα αναχώρησης. Παρακαλώ επιλέξτε άλλη ημερομηνία.');
+      return;
+    }
+    const note = booking.departure_note ?? '';
+    setNoteBooking(booking);
+    setNeedsSheets(note.includes('Αλλαγή σεντονιών'));
+    setEarlyCheckout(note.includes('Πρόωρη αναχώρηση'));
+  }
+
+  async function saveNote() {
+    if (!noteBooking) return;
+
+    const parts: string[] = [];
+    if (needsSheets) parts.push('Αλλαγή σεντονιών');
+    if (earlyCheckout) parts.push('Πρόωρη αναχώρηση');
+
+    const { error } = await supabase
+      .from('bookings')
+      .update({
+        departure_note: parts.length > 0 ? parts.join(' · ') : null,
+      })
+      .eq('id', noteBooking.id);
+
+    if (error) {
+      alert('Σφάλμα κατά την αποθήκευση της σημείωσης: ' + error.message);
+      return;
+    }
+
+    setNoteBooking(null);
+    setRefreshKey((key) => key + 1);
+  }
+
+  function formatNoteDate(iso?: string | null) {
+    if (!iso) return '';
+    const [year, month, day] = iso.split('-');
+    return `${day}/${month}/${year}`;
   }
 
   async function handleDayPress(room: Room, dateString: string) {
@@ -310,12 +358,18 @@ export default function PropertyScreen() {
                       markingType="period"
                       style={styles.calendar}
                       theme={calendarTheme}
+                      enableSwipeMonths
                       current={'2026-07-18'}
                       markedDates={markedDatesForRoom(room.id)}
+                      onDayLongPress={(day) => {
+                        handleDayLongPress(room, day.dateString);
+                      }}
                       onDayPress={(day) => {
                         handleDayPress(room, day.dateString);
                       }}
                     />
+
+
 
                     <Text style={styles.bookingsTitle}>
                       Κρατήσεις — {room.name}
@@ -333,6 +387,53 @@ export default function PropertyScreen() {
           </ScrollView>
         </SafeAreaView>
       </ImageBackground>
+      <Modal
+        visible={noteBooking !== null}
+        animationType="fade"
+        transparent
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalPanel}>
+            <Text style={styles.modalDate}>
+              {formatNoteDate(noteBooking?.end_date)}
+            </Text>
+            <Text style={styles.modalSubtitle}>Σημείωση ημέρας</Text>
+
+            <Pressable
+              style={[
+                styles.optionRow,
+                needsSheets && styles.optionRowActive,
+              ]}
+              onPress={() => setNeedsSheets((v) => !v)}
+            >
+              <Text style={styles.optionEmoji}>🧺</Text>
+              <Text style={styles.optionLabel}>Αλλαγή σεντονιών</Text>
+            </Pressable>
+
+            <Pressable
+              style={[
+                styles.optionRow,
+                earlyCheckout && styles.optionRowActive,
+              ]}
+              onPress={() => setEarlyCheckout((v) => !v)}
+            >
+              <Text style={styles.optionEmoji}>🏃</Text>
+              <Text style={styles.optionLabel}>Πρόωρη αναχώρηση</Text>
+            </Pressable>
+
+            <Pressable style={styles.modalConfirm} onPress={saveNote}>
+              <Text style={styles.modalConfirmText}>Αποθήκευση</Text>
+            </Pressable>
+
+            <Pressable
+              style={styles.modalCancel}
+              onPress={() => setNoteBooking(null)}
+            >
+              <Text style={styles.modalCancelText}>Άκυρο</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -434,5 +535,78 @@ const styles = StyleSheet.create({
     width: '100%',
     borderRadius: 14,
     overflow: 'hidden',
+  },
+
+  // modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(44, 36, 28, 0.55)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalPanel: {
+    backgroundColor: Brand.white,
+    borderRadius: 24,
+    padding: 22,
+    gap: 12,
+  },
+  modalDate: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: Brand.ink,
+  },
+  modalSubtitle: {
+    fontSize: 15,
+    color: Brand.claySoft,
+    marginBottom: 4,
+  },
+  optionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: Brand.sand,
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 14,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  optionRowActive: {
+    borderColor: Brand.gold,
+    backgroundColor: Brand.sandDeep,
+  },
+  optionEmoji: {
+    fontSize: 22,
+  },
+  optionLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Brand.ink,
+    flex: 1,
+  },
+  modalConfirm: {
+    marginTop: 4,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: Brand.clay,
+    alignItems: 'center',
+  },
+  modalConfirmText: {
+    color: Brand.white,
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  modalCancel: {
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Brand.sandDeep,
+    alignItems: 'center',
+    backgroundColor: Brand.white,
+  },
+  modalCancelText: {
+    color: Brand.ink,
+    fontWeight: '700',
+    fontSize: 16,
   },
 });
