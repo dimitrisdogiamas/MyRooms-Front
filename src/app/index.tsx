@@ -1,172 +1,238 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useState } from 'react';
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { Calendar, CalendarList, Agenda } from 'react-native-calendars';
-import { Pressable } from 'react-native';
-import { supabase } from '@/lib/supabase';
-import { useEffect } from 'react';
-import RoomsSelector from '@/components/RoomsSelector';
-import { RoomKey } from '@/components/RoomsSelector';
-import { ImageBackground } from 'react-native';
-import { BookingsList } from '@/components/BookingsList';
+import { Brand, Spacing } from "@/constants/theme";
+import { supabase } from "@/lib/supabase";
+import { router } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
+import {
+  Alert,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  TextInput,
+  View
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { ThemedText } from "@/components/themed-text";
 
-type RoomAvailability = {
-  [dateString: string]: {
-    color: string;
-    textColor: string;
-    startingDay?: boolean;
-    endingDay?: boolean;
-  }
-}
-
-type RoomsAvailability = {
-  room1: RoomAvailability;
-  room2: RoomAvailability;
+type Property = {
+  id: string;
+  name: string;
 };
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+const PropertiesList = () => {
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [saving, setSaving] = useState(false);
 
-export default function HomeScreen() {
-  const [selectedRoom, setSelectedRoom] = useState<RoomKey>('room1');
-  const [selectStartDate, setSelectStartDate] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
-  // availability of each room 
-  const [roomAvailability, setRoomAvailability] = useState<RoomsAvailability>({
-    room1: {},
-    room2: {},
-  });
-
-
-  async function handleDayPress(dateString: string) {
-    if (!selectStartDate) {
-      setSelectStartDate(dateString);
-      return;
+  const fetchProperties = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("properties")
+      .select("*")
+      .order("name", { ascending: true });
+    if (error) {
+      console.error(error);
+      Alert.alert("Σφάλμα", "Αποτυχία φόρτωσης ιδιοκτησιών");
+    } else {
+      setProperties(data ?? []);
     }
+    setLoading(false);
+  }, []);
 
-    // second tap calculate the range and mark the dates
-    const startDate = new Date(selectStartDate);
-    const endDate = new Date(dateString);
-    const diffDates = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  useEffect(() => {
+    fetchProperties();
+  }, [fetchProperties]);
 
+  async function addProperty() {
+    const name = newName.trim();
+    if (!name || saving) return;
 
-    if (diffDates < 5) {
-      alert("Η κράτηση πρέπει να είναι τουλάχιστον 5 ημέρες.");
-      setSelectStartDate(null);
-      return;
-    }
-
-    // supabase connection 
-    const { error } = await supabase.from('bookings').insert([{
-      room_id: selectedRoom,
-      start_date: selectStartDate,
-      end_date: dateString
-    }]);
+    setSaving(true);
+    const { error } = await supabase.from("properties").insert([{ name }]);
+    setSaving(false);
 
     if (error) {
-      alert("Σφάλμα κατά την αποθήκευση της κράτησης: " + error.message);
-      setSelectStartDate(null);
+      console.error(error);
+      Alert.alert("Σφάλμα", "Αποτυχία προσθήκης ιδιοκτησίας");
       return;
     }
 
-    //valid range 
-    const newMarkedDates: RoomAvailability = {};
-
-    const currentDate = new Date(startDate);
-    while (currentDate <= endDate) {
-      const iso = currentDate.toISOString().split('T')[0];
-      newMarkedDates[iso] = {
-        color: '#e74c3c',
-        textColor: '#ffffff',
-        startingDay: iso === selectStartDate,
-        endingDay: iso === dateString,
-      };
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-
-    setRoomAvailability((prev) => ({
-      ...prev,
-      [selectedRoom]: {
-        ...prev[selectedRoom],
-        ...newMarkedDates,
-      },
-    }));
-
-    setRefreshKey((prev) => prev + 1); // trigger re-render
-
-    setSelectStartDate(null);
+    setNewName("");
+    setAdding(false);
+    setLoading(true);
+    await fetchProperties();
   }
 
-  return (
-      <ImageBackground 
-        source={require('@/assets/images/licensed-image.jpg')}
-        style={styles.backgroundImage}
-    resizeMode="cover"
-    >
-      <SafeAreaView>
-        <ThemedText>
-          Welcome to {`Mel&Dim Resort`}
-        </ThemedText>
-      
-        <RoomsSelector selectedRoom={selectedRoom} onSelectRoom={setSelectedRoom} />
-
-        <Calendar
-          markingType="period"
-          style={styles.Calendar}
-          current={'2026-07-18'}
-          markedDates={roomAvailability[selectedRoom]}
-          onDayPress={(day) => { handleDayPress(day.dateString) }}
-        >
-        
-        </Calendar>
-
-        <ThemedText style={{ marginTop: 20, marginBottom: 8, fontWeight: '700' }}>
-          Οι κρατήσεις σας 
-        </ThemedText>
-        <BookingsList  refreshKey={refreshKey} />
-
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ThemedText style={styles.muted}>Φόρτωση...</ThemedText>
       </SafeAreaView>
-      </ImageBackground>
     );
   }
 
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <View>
+          <ThemedText style={styles.eyebrow}>Mel&Dim Resort</ThemedText>
+          <ThemedText style={styles.title}>Ιδιοκτησίες</ThemedText>
+        </View>
+        <Pressable
+          style={styles.addButton}
+          onPress={() => setAdding((prev) => !prev)}
+        >
+          <ThemedText style={styles.addButtonText}>
+            {adding ? "Κλείσιμο" : "+ Νέα"}
+          </ThemedText>
+        </Pressable>
+      </View>
 
-  const styles = StyleSheet.create({
-    SafeAreaView: {
-      flex: 1,
-      padding: 16,
-      backgroundColor: '#fff',
-    },
-    Calendar: {
-      width: '100%',
-      height: 350,
-      alignSelf: 'center',
-    },
-    backgroundImage: {
-      flex: 1,
-      resizeMode: 'cover',
-    },
-  });
+      {adding && (
+        <View style={styles.addPanel}>
+          <TextInput
+            style={styles.input}
+            placeholder="Όνομα ιδιοκτησίας"
+            placeholderTextColor={Brand.claySoft}
+            value={newName}
+            onChangeText={setNewName}
+            autoFocus
+          />
+          <Pressable
+            style={[styles.confirmButton, saving && styles.confirmDisabled]}
+            onPress={addProperty}
+            disabled={saving}
+          >
+            <ThemedText style={styles.confirmText}>
+              {saving ? "Αποθήκευση..." : "Προσθήκη"}
+            </ThemedText>
+          </Pressable>
+        </View>
+      )}
+
+      <FlatList
+        data={properties}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContent}
+        ListEmptyComponent={
+          <ThemedText style={styles.muted}>
+            Δεν υπάρχουν ιδιοκτησίες ακόμα. Πρόσθεσε την πρώτη σου.
+          </ThemedText>
+        }
+        renderItem={({ item }) => (
+          <Pressable
+            onPress={() => router.push(`/property/${item.id}`)}
+            style={({ pressed }) => [
+              styles.card,
+              pressed && styles.cardPressed,
+            ]}
+          >
+            <ThemedText style={styles.cardText}>{item.name}</ThemedText>
+            <ThemedText style={styles.cardHint}>Κρατήσεις →</ThemedText>
+          </Pressable>
+        )}
+      />
+    </SafeAreaView>
+  );
+};
+
+export default PropertiesList;
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.two,
+    backgroundColor: Brand.sand,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    marginBottom: Spacing.three,
+  },
+  eyebrow: {
+    fontSize: 13,
+    color: Brand.claySoft,
+    marginBottom: 4,
+    letterSpacing: 0.4,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: Brand.ink,
+  },
+  addButton: {
+    backgroundColor: Brand.gold,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  addButtonText: {
+    color: Brand.white,
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  addPanel: {
+    backgroundColor: Brand.white,
+    borderRadius: 14,
+    padding: Spacing.three,
+    marginBottom: Spacing.three,
+    borderWidth: 1,
+    borderColor: Brand.sandDeep,
+    gap: Spacing.two,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: Brand.sandDeep,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+    color: Brand.ink,
+    backgroundColor: Brand.sand,
+  },
+  confirmButton: {
+    backgroundColor: Brand.clay,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  confirmDisabled: {
+    opacity: 0.6,
+  },
+  confirmText: {
+    color: Brand.white,
+    fontWeight: "700",
+  },
+  listContent: {
+    paddingBottom: Spacing.five,
+    gap: Spacing.two,
+  },
+  card: {
+    padding: Spacing.four,
+    backgroundColor: Brand.white,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Brand.sandDeep,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  cardPressed: {
+    backgroundColor: Brand.sandDeep,
+  },
+  cardText: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: Brand.clay,
+  },
+  cardHint: {
+    fontSize: 13,
+    color: Brand.claySoft,
+  },
+  muted: {
+    color: Brand.claySoft,
+    fontSize: 15,
+  },
+});

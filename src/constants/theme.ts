@@ -7,13 +7,28 @@ import '@/global.css';
 
 import { Platform } from 'react-native';
 
+/** Resort palette used across home / booking screens */
+export const Brand = {
+  sand: '#f7f1ea',
+  sandDeep: '#efe4d6',
+  clay: '#7a5c3e',
+  claySoft: '#a08c74',
+  gold: '#c9a876',
+  goldDark: '#b8945f',
+  ink: '#2c241c',
+  danger: '#c0392b',
+  white: '#ffffff',
+  calendarBlue: '#3498db',
+  calendarTurnover: '#e74c3c',
+} as const;
+
 export const Colors = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    text: Brand.ink,
+    background: Brand.sand,
+    backgroundElement: Brand.sandDeep,
+    backgroundSelected: Brand.gold,
+    textSecondary: Brand.claySoft,
   },
   dark: {
     text: '#ffffff',
