@@ -12,7 +12,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/themed-text";
-
+import { getAvailableRooms, getTurnovers, getGaps, getSheetDays } from "@/lib/bookingInsights";
+import {  Room, Booking ,Turnover, SheetDay, Sheets, AvailableRoom} from "@/lib/bookingInsights";
+import { Modal, Text } from "react-native";
 type Property = {
   id: string;
   name: string;
@@ -24,7 +26,10 @@ const PropertiesList = () => {
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
   const [saving, setSaving] = useState(false);
-
+  const [deleting, setDeleting] = useState(false);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [insightModal, setInsightModal] = useState<{title: string, lines: Turnover[]} | null>(null);
   const fetchProperties = useCallback(async () => {
     const { data, error } = await supabase
       .from("properties")
@@ -63,6 +68,78 @@ const PropertiesList = () => {
     await fetchProperties();
   }
 
+  async function deleteProperty(id: string) {
+    Alert.alert(
+      'Διαγραφή ιδιοκτησίας',
+      'Θα διαγραφούν και τα δωμάτια και οι κρατήσεις τους.\n\nΣυνέχεια;',
+      [
+        { text: 'Άκυρο', style: 'cancel' },
+        {
+          text: 'Διαγραφή',
+          style: 'destructive',
+          onPress: async () => {
+            setDeleting(true);
+
+            const { data: roomsData, error: roomsFetchError } = await supabase
+              .from('rooms')
+              .select('id')
+              .eq('property_id', id);
+
+            if (roomsFetchError) {
+              setDeleting(false);
+              console.error(roomsFetchError);
+              Alert.alert('Σφάλμα', 'Αποτυχία διαγραφής ιδιοκτησίας');
+              return;
+            }
+
+            const roomIds = (roomsData ?? []).map((room) => room.id);
+
+            if (roomIds.length > 0) {
+              const { error: bookingsError } = await supabase
+                .from('bookings')
+                .delete()
+                .in('room_id', roomIds);
+
+              if (bookingsError) {
+                setDeleting(false);
+                console.error(bookingsError);
+                Alert.alert('Σφάλμα', 'Αποτυχία διαγραφής κρατήσεων');
+                return;
+              }
+
+              const { error: roomsError } = await supabase
+                .from('rooms')
+                .delete()
+                .eq('property_id', id);
+
+              if (roomsError) {
+                setDeleting(false);
+                console.error(roomsError);
+                Alert.alert('Σφάλμα', 'Αποτυχία διαγραφής δωματίων');
+                return;
+              }
+            }
+
+            const { error } = await supabase
+              .from('properties')
+              .delete()
+              .eq('id', id);
+
+            setDeleting(false);
+
+            if (error) {
+              console.error(error);
+              Alert.alert('Σφάλμα', 'Αποτυχία διαγραφής ιδιοκτησίας');
+              return;
+            }
+
+            await fetchProperties();
+          },
+        },
+      ],
+    );
+  }
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -83,7 +160,7 @@ const PropertiesList = () => {
           onPress={() => setAdding((prev) => !prev)}
         >
           <ThemedText style={styles.addButtonText}>
-            {adding ? "Κλείσιμο" : "+ Νέα"}
+            {adding ? 'Κλείσιμο' : '+ Νέα'}
           </ThemedText>
         </Pressable>
       </View>
@@ -104,7 +181,7 @@ const PropertiesList = () => {
             disabled={saving}
           >
             <ThemedText style={styles.confirmText}>
-              {saving ? "Αποθήκευση..." : "Προσθήκη"}
+              {saving ? 'Αποθήκευση...' : 'Προσθήκη'}
             </ThemedText>
           </Pressable>
         </View>
@@ -120,18 +197,39 @@ const PropertiesList = () => {
           </ThemedText>
         }
         renderItem={({ item }) => (
-          <Pressable
-            onPress={() => router.push(`/property/${item.id}`)}
-            style={({ pressed }) => [
-              styles.card,
-              pressed && styles.cardPressed,
-            ]}
-          >
-            <ThemedText style={styles.cardText}>{item.name}</ThemedText>
-            <ThemedText style={styles.cardHint}>Κρατήσεις →</ThemedText>
-          </Pressable>
+          <View style={styles.card}>
+            <Pressable
+              style={styles.cardMain}
+              onPress={() => router.push(`/property/${item.id}`)}
+            >
+              <ThemedText style={styles.cardText}>{item.name}</ThemedText>
+              <ThemedText style={styles.cardHint}>Κρατήσεις →</ThemedText>
+            </Pressable>
+            <Pressable
+              style={styles.deleteButton}
+              onPress={() => deleteProperty(item.id)}
+              disabled={deleting}
+            >
+              <ThemedText style={styles.deleteButtonText}>Διαγραφή</ThemedText>
+            </Pressable>
+            <View style={styles.insightRow}>
+              <Pressable onPress={() => {
+                const propertyRooms = rooms.filter((r) => r.property_id === item.id);
+                const result = getTurnovers(bookings, propertyRooms)
+                setInsightModal({title: 'Αλλαγές', lines: result})
+              }}>
+              Αλλαγές</Pressable>
+            </View>
+          </View>
         )}
       />
+      <Modal visible={
+        insightModal !== null
+      }>
+        <Text>{insightModal?.title}</Text>
+        {insightModal?.lines.map(...)}
+        <Pressable onPress={() => setInsightModal(null)}>Κλείσιμο</Pressable>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -210,21 +308,25 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   card: {
-    padding: Spacing.four,
+    padding: Spacing.three,
     backgroundColor: Brand.white,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: Brand.sandDeep,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    gap: Spacing.two,
+  },
+  cardMain: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.one,
   },
   cardPressed: {
     backgroundColor: Brand.sandDeep,
   },
   cardText: {
     fontSize: 18,
-    fontWeight: "600",
+    fontWeight: '600',
     color: Brand.clay,
   },
   cardHint: {
@@ -234,5 +336,22 @@ const styles = StyleSheet.create({
   muted: {
     color: Brand.claySoft,
     fontSize: 15,
+  },
+  deleteButton: {
+    backgroundColor: Brand.danger,
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  deleteButtonText: {
+    color: Brand.white,
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  insightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.one,
   },
 });
