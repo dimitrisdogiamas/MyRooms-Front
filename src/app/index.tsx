@@ -1,52 +1,194 @@
+import { ThemedText } from "@/components/themed-text";
 import { Brand, Spacing } from "@/constants/theme";
+import {
+  type Booking,
+  getAvailableRooms,
+  getGaps,
+  getSheetDays,
+  getTurnovers,
+  type Room,
+} from "@/lib/bookingInsights";
 import { supabase } from "@/lib/supabase";
 import { router } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   FlatList,
+  Modal,
   Pressable,
   StyleSheet,
+  Text,
   TextInput,
-  View
+  View,
 } from "react-native";
+import { Calendar } from "react-native-calendars";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ThemedText } from "@/components/themed-text";
-import { getAvailableRooms, getTurnovers, getGaps, getSheetDays } from "@/lib/bookingInsights";
-import {  Room, Booking ,Turnover, SheetDay, Sheets, AvailableRoom} from "@/lib/bookingInsights";
-import { Modal, Text } from "react-native";
+
 type Property = {
   id: string;
   name: string;
 };
 
+type InsightModalState = {
+  title: string;
+  lines: string[];
+} | null;
+
+type DatePickerField = "arrivals" | "departures" | null;
+
+/** Store as YYYY-MM-DD; show as dd/mm/yyyy */
+function formatDisplayDate(iso: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+function parseDateInput(text: string): string | null {
+  const trimmed = text.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+
+  const match = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!match) return null;
+
+  const day = match[1].padStart(2, "0");
+  const month = match[2].padStart(2, "0");
+  const year = match[3];
+  return `${year}-${month}-${day}`;
+}
+
 const PropertiesList = () => {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
-  const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [insightModal, setInsightModal] = useState<{title: string, lines: Turnover[]} | null>(null);
-  const fetchProperties = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("properties")
-      .select("*")
-      .order("name", { ascending: true });
-    if (error) {
-      console.error(error);
+  const [insightModal, setInsightModal] = useState<InsightModalState>(null);
+  const [arrivals, setArrivals] = useState<string>("");
+  const [departures, setDepartures] = useState<string>("");
+  const [datePickerField, setDatePickerField] = useState<DatePickerField>(null);
+
+  const fetchHomeData = useCallback(async () => {
+    const [propertiesRes, roomsRes, bookingsRes] = await Promise.all([
+      supabase
+        .from("properties")
+        .select("*")
+        .order("name", { ascending: true }),
+      supabase.from("rooms").select("id, name, property_id"),
+      supabase
+        .from("bookings")
+        .select("id, room_id, start_date, end_date, departure_note"),
+    ]);
+
+    if (propertiesRes.error) {
+      console.error(propertiesRes.error);
       Alert.alert("Σφάλμα", "Αποτυχία φόρτωσης ιδιοκτησιών");
     } else {
-      setProperties(data ?? []);
+      setProperties(propertiesRes.data ?? []);
     }
+
+    if (roomsRes.error) {
+      console.error(roomsRes.error);
+    } else {
+      setRooms(roomsRes.data ?? []);
+    }
+
+    if (bookingsRes.error) {
+      console.error(bookingsRes.error);
+    } else {
+      setBookings(bookingsRes.data ?? []);
+    }
+
     setLoading(false);
   }, []);
 
   useEffect(() => {
-    fetchProperties();
-  }, [fetchProperties]);
+    fetchHomeData();
+  }, [fetchHomeData]);
+
+  function openInsight(
+    propertyId: string,
+    kind: "turnovers" | "sheets" | "gaps",
+  ) {
+    const propertyRooms = rooms.filter((r) => r.property_id === propertyId);
+
+    if (kind === "turnovers") {
+      const result = getTurnovers(bookings, propertyRooms);
+      setInsightModal({
+        title: "Αλλαγές",
+        lines:
+          result.length === 0
+            ? ["Δεν υπάρχουν αλλαγές."]
+            : result.map(
+                (t) =>
+                  `${t.roomName}: ${t.date}${t.note ? ` — ${t.note}` : ""}`,
+              ),
+      });
+      return;
+    }
+
+    if (kind === "sheets") {
+      const result = getSheetDays(bookings, propertyRooms);
+      setInsightModal({
+        title: "Σεντόνια",
+        lines:
+          result.length === 0
+            ? ["Δεν υπάρχουν ημερομηνίες για σεντόνια."]
+            : result.map((s) => `${s.roomName}: ${s.date}`),
+      });
+      return;
+    }
+
+    const result = getGaps(bookings, propertyRooms);
+    setInsightModal({
+      title: "Κενά",
+      lines:
+        result.length === 0
+          ? ["Δεν υπάρχουν κενά."]
+          : result.map(
+              (g) => `${g.roomName}: ${g.from} – ${g.to} (${g.nights} βράδια)`,
+            ),
+    });
+  }
+
+  function searchAvailability() {
+    const arrival = parseDateInput(arrivals) ?? arrivals;
+    const departure = parseDateInput(departures) ?? departures;
+
+    if (!arrival || !departure) {
+      Alert.alert("Σφάλμα", "Συμπλήρωσε άφιξη και αναχώρηση.");
+      return;
+    }
+    if (
+      !/^\d{4}-\d{2}-\d{2}$/.test(arrival) ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(departure)
+    ) {
+      Alert.alert(
+        "Σφάλμα",
+        "Χρησιμοποίησε μορφή dd/mm/yyyy ή διάλεξε από το ημερολόγιο.",
+      );
+      return;
+    }
+    if (arrival >= departure) {
+      Alert.alert("Σφάλμα", "Η άφιξη πρέπει να είναι πριν την αναχώρηση.");
+      return;
+    }
+
+    const result = getAvailableRooms(bookings, rooms, arrival, departure);
+    setInsightModal({
+      title: "Διαθέσιμα δωμάτια",
+      lines:
+        result.length === 0
+          ? ["Κανένα διαθέσιμο."]
+          : result.map((r) => {
+              const propertyName =
+                properties.find((p) => p.id === r.propertyId)?.name ?? "";
+              const turnover = r.isTurnoverArrival ? " · αλλαγή" : "";
+              return `${propertyName} — ${r.roomName}${turnover}`;
+            }),
+    });
+  }
 
   async function addProperty() {
     const name = newName.trim();
@@ -63,32 +205,31 @@ const PropertiesList = () => {
     }
 
     setNewName("");
-    setAdding(false);
     setLoading(true);
-    await fetchProperties();
+    await fetchHomeData();
   }
 
   async function deleteProperty(id: string) {
     Alert.alert(
-      'Διαγραφή ιδιοκτησίας',
-      'Θα διαγραφούν και τα δωμάτια και οι κρατήσεις τους.\n\nΣυνέχεια;',
+      "Διαγραφή ιδιοκτησίας",
+      "Θα διαγραφούν και τα δωμάτια και οι κρατήσεις τους.\n\nΣυνέχεια;",
       [
-        { text: 'Άκυρο', style: 'cancel' },
+        { text: "Άκυρο", style: "cancel" },
         {
-          text: 'Διαγραφή',
-          style: 'destructive',
+          text: "Διαγραφή",
+          style: "destructive",
           onPress: async () => {
             setDeleting(true);
 
             const { data: roomsData, error: roomsFetchError } = await supabase
-              .from('rooms')
-              .select('id')
-              .eq('property_id', id);
+              .from("rooms")
+              .select("id")
+              .eq("property_id", id);
 
             if (roomsFetchError) {
               setDeleting(false);
               console.error(roomsFetchError);
-              Alert.alert('Σφάλμα', 'Αποτυχία διαγραφής ιδιοκτησίας');
+              Alert.alert("Σφάλμα", "Αποτυχία διαγραφής ιδιοκτησίας");
               return;
             }
 
@@ -96,44 +237,44 @@ const PropertiesList = () => {
 
             if (roomIds.length > 0) {
               const { error: bookingsError } = await supabase
-                .from('bookings')
+                .from("bookings")
                 .delete()
-                .in('room_id', roomIds);
+                .in("room_id", roomIds);
 
               if (bookingsError) {
                 setDeleting(false);
                 console.error(bookingsError);
-                Alert.alert('Σφάλμα', 'Αποτυχία διαγραφής κρατήσεων');
+                Alert.alert("Σφάλμα", "Αποτυχία διαγραφής κρατήσεων");
                 return;
               }
 
               const { error: roomsError } = await supabase
-                .from('rooms')
+                .from("rooms")
                 .delete()
-                .eq('property_id', id);
+                .eq("property_id", id);
 
               if (roomsError) {
                 setDeleting(false);
                 console.error(roomsError);
-                Alert.alert('Σφάλμα', 'Αποτυχία διαγραφής δωματίων');
+                Alert.alert("Σφάλμα", "Αποτυχία διαγραφής δωματίων");
                 return;
               }
             }
 
             const { error } = await supabase
-              .from('properties')
+              .from("properties")
               .delete()
-              .eq('id', id);
+              .eq("id", id);
 
             setDeleting(false);
 
             if (error) {
               console.error(error);
-              Alert.alert('Σφάλμα', 'Αποτυχία διαγραφής ιδιοκτησίας');
+              Alert.alert("Σφάλμα", "Αποτυχία διαγραφής ιδιοκτησίας");
               return;
             }
 
-            await fetchProperties();
+            await fetchHomeData();
           },
         },
       ],
@@ -150,51 +291,99 @@ const PropertiesList = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <View>
-          <ThemedText style={styles.eyebrow}>Mel&Dim Resort</ThemedText>
-          <ThemedText style={styles.title}>Ιδιοκτησίες</ThemedText>
-        </View>
+      <View style={styles.addRow}>
+        <TextInput
+          style={[styles.input, styles.addInput]}
+          placeholder="Όνομα σπιτιού / καταλύματος"
+          placeholderTextColor={Brand.claySoft}
+          value={newName}
+          onChangeText={setNewName}
+          onSubmitEditing={addProperty}
+          returnKeyType="done"
+        />
         <Pressable
-          style={styles.addButton}
-          onPress={() => setAdding((prev) => !prev)}
+          style={[
+            styles.confirmButton,
+            styles.addSubmit,
+            saving && styles.confirmDisabled,
+          ]}
+          onPress={addProperty}
+          disabled={saving}
         >
-          <ThemedText style={styles.addButtonText}>
-            {adding ? 'Κλείσιμο' : '+ Νέα'}
+          <ThemedText style={styles.confirmText}>
+            {saving ? "..." : "Προσθήκη"}
           </ThemedText>
         </Pressable>
       </View>
 
-      {adding && (
-        <View style={styles.addPanel}>
-          <TextInput
-            style={styles.input}
-            placeholder="Όνομα ιδιοκτησίας"
-            placeholderTextColor={Brand.claySoft}
-            value={newName}
-            onChangeText={setNewName}
-            autoFocus
-          />
-          <Pressable
-            style={[styles.confirmButton, saving && styles.confirmDisabled]}
-            onPress={addProperty}
-            disabled={saving}
-          >
-            <ThemedText style={styles.confirmText}>
-              {saving ? 'Αποθήκευση...' : 'Προσθήκη'}
-            </ThemedText>
-          </Pressable>
-        </View>
-      )}
-
       <FlatList
         data={properties}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
+        style={styles.flatList}
+        contentContainerStyle={styles.listContainer}
         ListEmptyComponent={
           <ThemedText style={styles.muted}>
             Δεν υπάρχουν ιδιοκτησίες ακόμα. Πρόσθεσε την πρώτη σου.
           </ThemedText>
+        }
+        ListFooterComponent={
+          <View style={styles.searchPanel}>
+            <ThemedText style={styles.searchTitle}>
+              Αναζήτηση διαθεσιμότητας
+            </ThemedText>
+
+            <View style={styles.dateRow}>
+              <View style={styles.dateField}>
+                <TextInput
+                  style={[styles.input, styles.dateInput]}
+                  placeholder="dd/mm/yyyy"
+                  placeholderTextColor={Brand.claySoft}
+                  value={arrivals ? formatDisplayDate(arrivals) : ""}
+                  onChangeText={(text) => {
+                    const iso = parseDateInput(text);
+                    setArrivals(iso ?? text);
+                  }}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="numbers-and-punctuation"
+                />
+                <Pressable
+                  style={styles.dateIconBtn}
+                  onPress={() => setDatePickerField("arrivals")}
+                  hitSlop={8}
+                >
+                  <Text style={styles.dateIconText}>📅</Text>
+                </Pressable>
+              </View>
+
+              <View style={styles.dateField}>
+                <TextInput
+                  style={[styles.input, styles.dateInput]}
+                  placeholder="dd/mm/yyyy"
+                  placeholderTextColor={Brand.claySoft}
+                  value={departures ? formatDisplayDate(departures) : ""}
+                  onChangeText={(text) => {
+                    const iso = parseDateInput(text);
+                    setDepartures(iso ?? text);
+                  }}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="numbers-and-punctuation"
+                />
+                <Pressable
+                  style={styles.dateIconBtn}
+                  onPress={() => setDatePickerField("departures")}
+                  hitSlop={8}
+                >
+                  <Text style={styles.dateIconText}>📅</Text>
+                </Pressable>
+              </View>
+            </View>
+
+            <Pressable style={styles.searchButton} onPress={searchAvailability}>
+              <ThemedText style={styles.searchButtonText}>Αναζήτηση</ThemedText>
+            </Pressable>
+          </View>
         }
         renderItem={({ item }) => (
           <View style={styles.card}>
@@ -213,22 +402,106 @@ const PropertiesList = () => {
               <ThemedText style={styles.deleteButtonText}>Διαγραφή</ThemedText>
             </Pressable>
             <View style={styles.insightRow}>
-              <Pressable onPress={() => {
-                const propertyRooms = rooms.filter((r) => r.property_id === item.id);
-                const result = getTurnovers(bookings, propertyRooms)
-                setInsightModal({title: 'Αλλαγές', lines: result})
-              }}>
-              Αλλαγές</Pressable>
+              <Pressable
+                style={styles.insightChip}
+                onPress={() => openInsight(item.id, "turnovers")}
+              >
+                <ThemedText style={styles.insightChipText}>Αλλαγές</ThemedText>
+              </Pressable>
+              <Pressable
+                style={styles.insightChip}
+                onPress={() => openInsight(item.id, "sheets")}
+              >
+                <ThemedText style={styles.insightChipText}>Σεντόνια</ThemedText>
+              </Pressable>
+              <Pressable
+                style={styles.insightChip}
+                onPress={() => openInsight(item.id, "gaps")}
+              >
+                <ThemedText style={styles.insightChipText}>Κενά</ThemedText>
+              </Pressable>
             </View>
           </View>
         )}
       />
-      <Modal visible={
-        insightModal !== null
-      }>
-        <Text>{insightModal?.title}</Text>
-        {insightModal?.lines.map(...)}
-        <Pressable onPress={() => setInsightModal(null)}>Κλείσιμο</Pressable>
+
+      <Modal
+        visible={insightModal !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setInsightModal(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalPanel}>
+            <Text style={styles.modalTitle}>{insightModal?.title}</Text>
+            {insightModal?.lines.map((line, index) => (
+              <Text key={`${line}-${index}`} style={styles.modalLine}>
+                {line}
+              </Text>
+            ))}
+            <Pressable
+              style={styles.modalClose}
+              onPress={() => setInsightModal(null)}
+            >
+              <Text style={styles.modalCloseText}>Κλείσιμο</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={datePickerField !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDatePickerField(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalPanel}>
+            <Text style={styles.modalTitle}>
+              {datePickerField === "arrivals" ? "Άφιξη" : "Αναχώρηση"}
+            </Text>
+            <Calendar
+              enableSwipeMonths
+              current={
+                (datePickerField === "arrivals" ? arrivals : departures) ||
+                undefined
+              }
+              markedDates={(() => {
+                const selected =
+                  datePickerField === "arrivals" ? arrivals : departures;
+                if (!selected || !/^\d{4}-\d{2}-\d{2}$/.test(selected)) {
+                  return undefined;
+                }
+                return {
+                  [selected]: {
+                    selected: true,
+                    selectedColor: Brand.clay,
+                  },
+                };
+              })()}
+              onDayPress={(day) => {
+                if (datePickerField === "arrivals") {
+                  setArrivals(day.dateString);
+                } else if (datePickerField === "departures") {
+                  setDepartures(day.dateString);
+                }
+                setDatePickerField(null);
+              }}
+              theme={{
+                todayTextColor: Brand.goldDark,
+                arrowColor: Brand.clay,
+                selectedDayBackgroundColor: Brand.clay,
+                textSectionTitleColor: Brand.claySoft,
+              }}
+            />
+            <Pressable
+              style={styles.modalClose}
+              onPress={() => setDatePickerField(null)}
+            >
+              <Text style={styles.modalCloseText}>Κλείσιμο</Text>
+            </Pressable>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -239,61 +512,37 @@ export default PropertiesList;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.two,
+    paddingHorizontal: Spacing.two,
+    paddingTop: Spacing.one,
     backgroundColor: Brand.sand,
   },
-  header: {
+  addRow: {
     flexDirection: "row",
-    alignItems: "flex-end",
-    justifyContent: "space-between",
-    marginBottom: Spacing.three,
+    alignItems: "center",
+    gap: 8,
+    marginBottom: Spacing.two,
   },
-  eyebrow: {
-    fontSize: 13,
-    color: Brand.claySoft,
-    marginBottom: 4,
-    letterSpacing: 0.4,
+  addInput: {
+    flex: 1,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: Brand.ink,
-  },
-  addButton: {
-    backgroundColor: Brand.gold,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  addButtonText: {
-    color: Brand.white,
-    fontWeight: "700",
-    fontSize: 14,
-  },
-  addPanel: {
-    backgroundColor: Brand.white,
-    borderRadius: 14,
-    padding: Spacing.three,
-    marginBottom: Spacing.three,
-    borderWidth: 1,
-    borderColor: Brand.sandDeep,
-    gap: Spacing.two,
+  addSubmit: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
   input: {
     borderWidth: 1,
     borderColor: Brand.sandDeep,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 16,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 14,
     color: Brand.ink,
-    backgroundColor: Brand.sand,
+    backgroundColor: Brand.white,
   },
   confirmButton: {
     backgroundColor: Brand.clay,
-    borderRadius: 10,
-    paddingVertical: 12,
+    borderRadius: 8,
+    paddingVertical: 10,
     alignItems: "center",
   },
   confirmDisabled: {
@@ -302,56 +551,149 @@ const styles = StyleSheet.create({
   confirmText: {
     color: Brand.white,
     fontWeight: "700",
+    fontSize: 14,
   },
-  listContent: {
-    paddingBottom: Spacing.five,
+  flatList: {
+    flex: 1,
+  },
+  listContainer: {
+    paddingBottom: Spacing.three,
     gap: Spacing.two,
   },
   card: {
-    padding: Spacing.three,
+    padding: Spacing.two,
     backgroundColor: Brand.white,
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: Brand.sandDeep,
-    gap: Spacing.two,
+    gap: 6,
   },
   cardMain: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: Spacing.one,
-  },
-  cardPressed: {
-    backgroundColor: Brand.sandDeep,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   cardText: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: "600",
     color: Brand.clay,
   },
   cardHint: {
-    fontSize: 13,
+    fontSize: 12,
     color: Brand.claySoft,
   },
   muted: {
     color: Brand.claySoft,
-    fontSize: 15,
+    fontSize: 14,
   },
   deleteButton: {
     backgroundColor: Brand.danger,
-    borderRadius: 10,
-    paddingVertical: 10,
-    alignItems: 'center',
+    borderRadius: 8,
+    paddingVertical: 7,
+    alignItems: "center",
   },
   deleteButtonText: {
     color: Brand.white,
-    fontWeight: '700',
-    fontSize: 13,
+    fontWeight: "700",
+    fontSize: 12,
   },
   insightRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: Spacing.one,
+    flexDirection: "row",
+    gap: 6,
+  },
+  insightChip: {
+    flex: 1,
+    backgroundColor: Brand.sand,
+    borderRadius: 8,
+    paddingVertical: 7,
+    alignItems: "center",
+  },
+  insightChipText: {
+    color: Brand.ink,
+    fontWeight: "600",
+    fontSize: 12,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(44, 36, 28, 0.55)",
+    justifyContent: "center",
+    padding: 20,
+  },
+  modalPanel: {
+    backgroundColor: Brand.white,
+    borderRadius: 16,
+    padding: 16,
+    gap: 8,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: Brand.ink,
+    marginBottom: 2,
+  },
+  modalLine: {
+    fontSize: 14,
+    color: Brand.clay,
+    lineHeight: 20,
+  },
+  modalClose: {
+    marginTop: 4,
+    borderWidth: 1,
+    borderColor: Brand.sandDeep,
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  modalCloseText: {
+    fontWeight: "700",
+    color: Brand.ink,
+  },
+  searchPanel: {
+    marginTop: Spacing.two,
+    backgroundColor: Brand.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Brand.sandDeep,
+    borderStyle: "dashed",
+    padding: Spacing.two,
+    gap: 6,
+  },
+  searchTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: Brand.ink,
+  },
+  dateRow: {
+    flexDirection: "row",
+    gap: 6,
+  },
+  dateField: {
+    flex: 1,
+    position: "relative",
+    justifyContent: "center",
+  },
+  dateInput: {
+    paddingRight: 36,
+  },
+  dateIconBtn: {
+    position: "absolute",
+    right: 8,
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  dateIconText: {
+    fontSize: 16,
+  },
+  searchButton: {
+    backgroundColor: Brand.clay,
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  searchButtonText: {
+    color: Brand.white,
+    fontWeight: "700",
+    fontSize: 14,
   },
 });
