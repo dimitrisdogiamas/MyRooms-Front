@@ -68,6 +68,7 @@ const PropertiesList = () => {
   const [arrivals, setArrivals] = useState<string>("");
   const [departures, setDepartures] = useState<string>("");
   const [datePickerField, setDatePickerField] = useState<DatePickerField>(null);
+  const [alerts, setAlerts] = useState<string[]>([]);
 
   const fetchHomeData = useCallback(async () => {
     const [propertiesRes, roomsRes, bookingsRes] = await Promise.all([
@@ -80,6 +81,7 @@ const PropertiesList = () => {
         .from("bookings")
         .select("id, room_id, start_date, end_date, departure_note"),
     ]);
+
 
     if (propertiesRes.error) {
       console.error(propertiesRes.error);
@@ -100,6 +102,26 @@ const PropertiesList = () => {
       setBookings(bookingsRes.data ?? []);
     }
 
+    const allRooms = roomsRes.data ?? [];
+    const allBookings = bookingsRes.data ?? [];
+    const today = new Date().toISOString().split("T")[0];
+    const messages: string[] = [];
+
+    const turnovers = getTurnovers(allBookings, allRooms);
+    for (const t of turnovers) {
+      if (t.date === today) {
+        messages.push(`Αλλαγή σήμερα: ${t.roomName}`);
+      }
+    }
+
+    const sheets = getSheetDays(allBookings, allRooms);
+    for (const s of sheets) {
+      if (s.date === today) {
+        messages.push(`Σεντόνια σήμερα: ${s.roomName}`);
+      }
+    }
+
+    setAlerts(messages);
     setLoading(false);
   }, []);
 
@@ -315,6 +337,14 @@ const PropertiesList = () => {
           </ThemedText>
         </Pressable>
       </View>
+
+      {alerts.length > 0 && (
+        <View style={styles.alertBanner}>
+          {alerts.map((msg, i) => (
+            <Text key={i} style={styles.alertText}>⚠️ {msg}</Text>
+          ))}
+        </View>
+      )}
 
       <FlatList
         data={properties}
@@ -694,6 +724,16 @@ const styles = StyleSheet.create({
   searchButtonText: {
     color: Brand.white,
     fontWeight: "700",
+    fontSize: 14,
+  },
+  alertBanner: {
+    backgroundColor: Brand.danger,
+    borderRadius: 12,
+    padding: 16,
+    gap: 8,
+  },
+  alertText: {
+    color: Brand.white,
     fontSize: 14,
   },
 });
