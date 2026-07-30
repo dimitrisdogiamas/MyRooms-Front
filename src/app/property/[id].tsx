@@ -60,6 +60,7 @@ function parseDateInput(text: string): string | null {
   const match = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (!match) return null;
   return `${match[3]}-${match[2].padStart(2, "0")}-${match[1].padStart(2, "0")}`;
+<<<<<<< HEAD
 }
 
 function countNights(start: string, end: string): number {
@@ -70,6 +71,8 @@ function countNights(start: string, end: string): number {
     current = addDays(current, 1);
   }
   return nights;
+=======
+>>>>>>> main
 }
 
 function buildAvailabilityFromBookings(bookings: Booking[]): RoomsAvailability {
@@ -550,6 +553,15 @@ export default function PropertyScreen() {
             contentContainerStyle={styles.content}
             keyboardShouldPersistTaps="handled"
           >
+<<<<<<< HEAD
+=======
+            <View style={styles.hero}>
+              <Text style={styles.heroTitle}>{propertyName}</Text>
+              <Text style={styles.heroSubtitle}>
+
+              </Text>
+            </View>
+>>>>>>> main
 
 
 
@@ -738,8 +750,7 @@ export default function PropertyScreen() {
                     </Text>
 
                     <Text style={styles.incomeText}>
-                      Σύνολο εσόδων δωματίου:{" "}
-                      {getRoomIncome(bookings, roomPrices, room.id).toFixed(2)}€
+                      Σύνολο εσόδων δωματίου:{`${getRoomIncome(bookings, roomPrices, room.id).toFixed(2)}€`}
                     </Text>
 
                     <Text style={styles.bookingsTitle}>
