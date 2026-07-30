@@ -553,15 +553,6 @@ export default function PropertyScreen() {
             contentContainerStyle={styles.content}
             keyboardShouldPersistTaps="handled"
           >
-<<<<<<< HEAD
-=======
-            <View style={styles.hero}>
-              <Text style={styles.heroTitle}>{propertyName}</Text>
-              <Text style={styles.heroSubtitle}>
-
-              </Text>
-            </View>
->>>>>>> main
 
 
 
