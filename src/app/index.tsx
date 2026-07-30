@@ -313,6 +313,8 @@ const PropertiesList = () => {
 
   return (
     <SafeAreaView style={styles.container}>
+
+      <Text style={styles.title}>Βιβλίο Διαχείρισης Δωματίων</Text>
       <View style={styles.addRow}>
         <TextInput
           style={[styles.input, styles.addInput]}
@@ -545,6 +547,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.two,
     paddingTop: Spacing.one,
     backgroundColor: Brand.sand,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: Brand.clay,
+    marginBottom: Spacing.two,
   },
   addRow: {
     flexDirection: "row",
