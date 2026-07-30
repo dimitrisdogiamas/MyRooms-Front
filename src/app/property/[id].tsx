@@ -45,7 +45,7 @@ function parseDateInput(text: string): string | null {
   if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
   const match = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (!match) return null;
-  return `${match[3]}-${match[1].padStart(2, "0")}-${match[2].padStart(2, "0")}`;
+  return `${match[3]}-${match[2].padStart(2, "0")}-${match[1].padStart(2, "0")}`;
 }
 
 function buildAvailabilityFromBookings(bookings: Booking[]): RoomsAvailability {
@@ -413,7 +413,7 @@ export default function PropertyScreen() {
             <View style={styles.hero}>
               <Text style={styles.heroTitle}>{propertyName}</Text>
               <Text style={styles.heroSubtitle}>
-                
+
               </Text>
             </View>
 
@@ -496,8 +496,7 @@ export default function PropertyScreen() {
                     />
 
                     <Text style={styles.incomeText}>
-                      Σύνολο εσόδων δωματίου:{" "}
-                      {getRoomIncome(bookings, roomPrices, room.id).toFixed(2)}€
+                      Σύνολο εσόδων δωματίου:{`${getRoomIncome(bookings, roomPrices, room.id).toFixed(2)}€`}
                     </Text>
 
                     <Text style={styles.bookingsTitle}>
