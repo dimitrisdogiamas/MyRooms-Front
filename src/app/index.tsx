@@ -1,5 +1,5 @@
 import { ThemedText } from "@/components/themed-text";
-import { Brand, Spacing } from "@/constants/theme";
+import { Brand, Fonts, Spacing } from "@/constants/theme";
 import {
   type Booking,
   getAvailableRooms,
@@ -313,8 +313,11 @@ const PropertiesList = () => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.homeHeader}>
+        <Text style={styles.homeEyebrow}>ΒΙΒΛΙΟ ΚΑΤΑΛΥΜΑΤΟΣ</Text>
+        <Text style={styles.homeTitle}>Διαχείριση ενοικιαζόμενων δωματίων</Text>
+      </View>
 
-      <Text style={styles.title}>Βιβλίο Διαχείρισης Δωματίων</Text>
       <View style={styles.addRow}>
         <TextInput
           style={[styles.input, styles.addInput]}
@@ -507,7 +510,7 @@ const PropertiesList = () => {
                 return {
                   [selected]: {
                     selected: true,
-                    selectedColor: Brand.clay,
+                    selectedColor: Brand.primary,
                   },
                 };
               })()}
@@ -520,9 +523,9 @@ const PropertiesList = () => {
                 setDatePickerField(null);
               }}
               theme={{
-                todayTextColor: Brand.goldDark,
-                arrowColor: Brand.clay,
-                selectedDayBackgroundColor: Brand.clay,
+                todayTextColor: Brand.primary,
+                arrowColor: Brand.primary,
+                selectedDayBackgroundColor: Brand.primary,
                 textSectionTitleColor: Brand.claySoft,
               }}
             />
@@ -548,11 +551,23 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.one,
     backgroundColor: Brand.sand,
   },
-  title: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: Brand.clay,
-    marginBottom: Spacing.two,
+  homeHeader: {
+    marginBottom: Spacing.three,
+    paddingHorizontal: 2,
+  },
+  homeEyebrow: {
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 1.2,
+    color: Brand.primary,
+    marginBottom: 6,
+  },
+  homeTitle: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: Brand.ink,
+    fontFamily: Fonts?.serif,
+    lineHeight: 34,
   },
   addRow: {
     flexDirection: "row",
@@ -578,7 +593,7 @@ const styles = StyleSheet.create({
     backgroundColor: Brand.white,
   },
   confirmButton: {
-    backgroundColor: Brand.clay,
+    backgroundColor: Brand.primary,
     borderRadius: 8,
     paddingVertical: 10,
     alignItems: "center",
@@ -614,7 +629,7 @@ const styles = StyleSheet.create({
   cardText: {
     fontSize: 16,
     fontWeight: "600",
-    color: Brand.clay,
+    color: Brand.ink,
   },
   cardHint: {
     fontSize: 12,
@@ -645,9 +660,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 7,
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: Brand.primary,
   },
   insightChipText: {
-    color: Brand.ink,
+    color: Brand.primary,
     fontWeight: "600",
     fontSize: 12,
   },
@@ -671,7 +688,7 @@ const styles = StyleSheet.create({
   },
   modalLine: {
     fontSize: 14,
-    color: Brand.clay,
+    color: Brand.ink,
     lineHeight: 20,
   },
   modalClose: {
@@ -724,7 +741,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   searchButton: {
-    backgroundColor: Brand.clay,
+    backgroundColor: Brand.primary,
     borderRadius: 8,
     paddingVertical: 10,
     alignItems: "center",

@@ -11,15 +11,17 @@ import { Platform } from 'react-native';
 export const Brand = {
   sand: '#f7f1ea',
   sandDeep: '#efe4d6',
-  clay: '#7a5c3e',
-  claySoft: '#a08c74',
+  clay: '#5f6f6c',
+  claySoft: '#7d8a87',
   gold: '#c9a876',
   goldDark: '#b8945f',
-  ink: '#2c241c',
+  ink: '#1f2a28',
   danger: '#c0392b',
   white: '#ffffff',
-  calendarBlue: '#3498db',
-  calendarTurnover: '#e74c3c',
+  /** Main teal accent — title, CTAs, calendar stay */
+  primary: '#2f6f6a',
+  calendarBlue: '#2f6f6a',
+  calendarTurnover: '#e08a3a',
 } as const;
 
 export const Colors = {
@@ -27,7 +29,7 @@ export const Colors = {
     text: Brand.ink,
     background: Brand.sand,
     backgroundElement: Brand.sandDeep,
-    backgroundSelected: Brand.gold,
+    backgroundSelected: Brand.primary,
     textSecondary: Brand.claySoft,
   },
   dark: {
