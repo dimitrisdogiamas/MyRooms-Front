@@ -1,8 +1,8 @@
-import { Brand } from '@/constants/theme';
-import { useState, useEffect, useCallback } from 'react';
-import { Pressable, View, StyleSheet, TextInput } from 'react-native';
-import { ThemedText } from './themed-text';
-import { supabase } from '@/lib/supabase';
+import { Brand } from "@/constants/theme";
+import { useState, useEffect, useCallback } from "react";
+import { Pressable, View, StyleSheet, TextInput } from "react-native";
+import { ThemedText } from "./themed-text";
+import { supabase } from "@/lib/supabase";
 
 export type Room = {
   id: string;
@@ -22,19 +22,18 @@ const RoomsSelector = ({
   onSelectRoom,
   onRoomsChanged,
 }: RoomsSelectorProps) => {
-  const [rooms, setRooms] = useState<Room[]>([]);
   const [adding, setAdding] = useState(false);
-  const [newRoomName, setNewRoomName] = useState('');
+  const [newRoomName, setNewRoomName] = useState("");
 
   const fetchRooms = useCallback(async () => {
     const { data, error } = await supabase
-      .from('rooms')
-      .select('*')
-      .eq('property_id', propertyId);
+      .from("rooms")
+      .select("*")
+      .eq("property_id", propertyId);
     if (error) {
-      console.error('Error fetching rooms:', error);
+      console.error("Error fetching rooms:", error);
+      return;
     }
-    setRooms(data ?? []);
 
     if (!selectedRoom && data && data.length > 0) {
       onSelectRoom(data[0]);
@@ -48,12 +47,12 @@ const RoomsSelector = ({
   async function addRoom() {
     if (!newRoomName.trim()) return;
     const { error } = await supabase
-      .from('rooms')
-      .insert([{ name: newRoomName, property_id: propertyId }]);
+      .from("rooms")
+      .insert([{ name: newRoomName.trim(), property_id: propertyId }]);
     if (error) {
-      console.error('Error adding room:', error);
+      console.error("Error adding room:", error);
     }
-    setNewRoomName('');
+    setNewRoomName("");
     setAdding(false);
     await fetchRooms();
     onRoomsChanged?.();
@@ -61,34 +60,15 @@ const RoomsSelector = ({
 
   return (
     <View style={styles.wrapper}>
-      <View style={styles.tabRow}>
-        {rooms.map((room) => {
-          const isActive = room.id === selectedRoom?.id;
-          return (
-            <Pressable
-              key={room.id}
-              style={[styles.tab, isActive && styles.tabActive]}
-              onPress={() => onSelectRoom(room)}
-            >
-              <ThemedText
-                style={[styles.tabText, isActive && styles.tabTextActive]}
-              >
-                {room.name}
-              </ThemedText>
-            </Pressable>
-          );
-        })}
-      </View>
-
       <Pressable style={styles.addButton} onPress={() => setAdding(true)}>
-        <ThemedText style={styles.addButtonText}>+ Δωμάτιο</ThemedText>
+        <ThemedText style={styles.addButtonText}>+ Προσθήκη δωματίου</ThemedText>
       </Pressable>
 
       {adding && (
         <View style={styles.addRow}>
           <TextInput
             style={styles.input}
-            placeholder="Όνομα Δωματίου"
+            placeholder="Ταμπέλα δωματίου (π.χ. 101)"
             placeholderTextColor={Brand.claySoft}
             value={newRoomName}
             onChangeText={setNewRoomName}
@@ -100,7 +80,7 @@ const RoomsSelector = ({
           <Pressable
             onPress={() => {
               setAdding(false);
-              setNewRoomName('');
+              setNewRoomName("");
             }}
           >
             <ThemedText style={styles.cancelText}>Ακύρωση</ThemedText>
@@ -115,48 +95,22 @@ const styles = StyleSheet.create({
   wrapper: {
     marginBottom: 12,
   },
-  tabRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    backgroundColor: Brand.sandDeep,
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 12,
-    gap: 4,
-  },
-  tab: {
-    flexGrow: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    alignItems: 'center',
-    borderRadius: 8,
-  },
-  tabActive: {
-    backgroundColor: Brand.white,
-  },
-  tabText: {
-    color: Brand.claySoft,
-    fontWeight: '500',
-  },
-  tabTextActive: {
-    color: Brand.ink,
-    fontWeight: '700',
-  },
   addButton: {
-    alignSelf: 'center',
+    width: "100%",
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: Brand.gold,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: Brand.primary,
+    alignItems: "center",
   },
   addButtonText: {
     color: Brand.white,
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: "700",
   },
   addRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     marginTop: 10,
   },
@@ -171,14 +125,14 @@ const styles = StyleSheet.create({
     color: Brand.ink,
   },
   confirmButton: {
-    backgroundColor: Brand.clay,
+    backgroundColor: Brand.primary,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 8,
   },
   confirmText: {
     color: Brand.white,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   cancelText: {
     color: Brand.claySoft,
