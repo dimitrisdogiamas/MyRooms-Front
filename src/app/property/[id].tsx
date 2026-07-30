@@ -60,7 +60,6 @@ function parseDateInput(text: string): string | null {
   const match = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (!match) return null;
   return `${match[3]}-${match[2].padStart(2, "0")}-${match[1].padStart(2, "0")}`;
-<<<<<<< HEAD
 }
 
 function countNights(start: string, end: string): number {
@@ -71,8 +70,6 @@ function countNights(start: string, end: string): number {
     current = addDays(current, 1);
   }
   return nights;
-=======
->>>>>>> main
 }
 
 function buildAvailabilityFromBookings(bookings: Booking[]): RoomsAvailability {
