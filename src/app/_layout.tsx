@@ -25,6 +25,15 @@ export default function TabLayout() {
             headerShown: true,
           }}
         />
+        <Stack.Screen
+          name="settings"
+          options={{
+            presentation: 'modal',
+            title: 'Ρυθμίσεις',
+            headerShown: true,
+          }}
+
+        />
       </Stack>
     </ThemeProvider>
   );

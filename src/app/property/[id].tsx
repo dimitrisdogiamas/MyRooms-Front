@@ -252,10 +252,10 @@ export default function PropertyScreen() {
 
   async function handleDayLongPress(room: Room, dateString: string) {
     const booking = bookings.find(
-      (b) => b.room_id === room.id && b.end_date === dateString,
+      (b) => b.room_id === room.id && b.start_date <= dateString && b.end_date >= dateString,
     );
     if (!booking) {
-      alert("Δεν είναι η μέρα αναχώρησης. Παρακαλώ επιλέξτε άλλη ημερομηνία.");
+      alert("Δεν υπάρχει κράτηση αυτή τη μέρα.");
       return;
     }
     const note = booking.departure_note ?? "";
@@ -429,8 +429,8 @@ export default function PropertyScreen() {
         (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24),
       ) + 1;
 
-    if (diffDates < 5) {
-      Alert.alert("Σφάλμα", "Η κράτηση πρέπει να είναι τουλάχιστον 5 ημέρες.");
+    if (diffDates < 0) {
+      Alert.alert("Σφάλμα", "Η κράτηση πρέπει να είναι τουλάχιστον 1 ημέρα.");
       setSelectStartByRoom((prev) => ({ ...prev, [room.id]: null }));
       return;
     }
@@ -740,16 +740,6 @@ export default function PropertyScreen() {
                     <Text style={styles.incomeText}>
                       Σύνολο εσόδων δωματίου:{`${getRoomIncome(bookings, roomPrices, room.id).toFixed(2)}€`}
                     </Text>
-
-                    <Text style={styles.bookingsTitle}>
-                      Κρατήσεις — {room.name}
-                    </Text>
-                    <BookingsList
-                      bookings={roomBookings}
-                      loading={loading}
-                      onCancelled={fetchPropertyData}
-                      rooms={rooms}
-                    />
                   </View>
                 );
               })

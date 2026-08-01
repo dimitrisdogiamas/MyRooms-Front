@@ -314,7 +314,15 @@ const PropertiesList = () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.homeHeader}>
-        <Text style={styles.homeEyebrow}>ΒΙΒΛΙΟ ΚΑΤΑΛΥΜΑΤΟΣ</Text>
+        <View style={styles.eyebrowRow}>
+          <Text style={styles.homeEyebrow}>ΒΙΒΛΙΟ ΚΑΤΑΛΥΜΑΤΟΣ</Text>
+          <Pressable
+            style={styles.settingsButton}
+            onPress={() => router.push("/settings")}
+          >
+            <Text style={styles.settingsButtonText}>⚙️</Text>
+          </Pressable>
+        </View>
         <Text style={styles.homeTitle}>Διαχείριση ενοικιαζόμενων δωματίων</Text>
       </View>
 
@@ -555,12 +563,18 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.three,
     paddingHorizontal: 2,
   },
+  eyebrowRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 6,
+  },
   homeEyebrow: {
+    flex: 1,
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 1.2,
     color: Brand.primary,
-    marginBottom: 6,
   },
   homeTitle: {
     fontSize: 28,
@@ -568,6 +582,19 @@ const styles = StyleSheet.create({
     color: Brand.ink,
     fontFamily: Fonts?.serif,
     lineHeight: 34,
+  },
+  settingsButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Brand.primary,
+    backgroundColor: Brand.white,
+  },
+  settingsButtonText: {
+    color: Brand.primary,
+    fontWeight: "700",
+    fontSize: 14,
   },
   addRow: {
     flexDirection: "row",
