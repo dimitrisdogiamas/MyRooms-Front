@@ -1,7 +1,6 @@
 import { ThemedText } from "@/components/themed-text";
-import { Brand, Fonts, Spacing } from "@/constants/theme";
-import {
-  type Booking,
+import { Fonts, Spacing, type BrandColors } from "@/constants/theme";
+import { type Booking,
   getAvailableRooms,
   getGaps,
   getSheetDays,
@@ -9,10 +8,12 @@ import {
   type Room,
 } from "@/lib/bookingInsights";
 import { supabase } from "@/lib/supabase";
+import { fs } from "@/lib/typography";
+import { useSettings } from "@/context/SettingsProvider";
+import { useBrand } from "@/hooks/use-brand";
 import { router } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
-import {
-  Alert,
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Alert,
   FlatList,
   Modal,
   Pressable,
@@ -69,6 +70,13 @@ const PropertiesList = () => {
   const [departures, setDepartures] = useState<string>("");
   const [datePickerField, setDatePickerField] = useState<DatePickerField>(null);
   const [alerts, setAlerts] = useState<string[]>([]);
+
+  const { settings } = useSettings();
+  const brand = useBrand();
+  const styles = useMemo(
+    () => createStyles(settings.fontScale, brand),
+    [settings.fontScale, brand],
+  );
 
   const fetchHomeData = useCallback(async () => {
     const [propertiesRes, roomsRes, bookingsRes] = await Promise.all([
@@ -330,7 +338,7 @@ const PropertiesList = () => {
         <TextInput
           style={[styles.input, styles.addInput]}
           placeholder="Όνομα σπιτιού / καταλύματος"
-          placeholderTextColor={Brand.claySoft}
+          placeholderTextColor={brand.claySoft}
           value={newName}
           onChangeText={setNewName}
           onSubmitEditing={addProperty}
@@ -380,7 +388,7 @@ const PropertiesList = () => {
                 <TextInput
                   style={[styles.input, styles.dateInput]}
                   placeholder="dd/mm/yyyy"
-                  placeholderTextColor={Brand.claySoft}
+                  placeholderTextColor={brand.claySoft}
                   value={arrivals ? formatDisplayDate(arrivals) : ""}
                   onChangeText={(text) => {
                     const iso = parseDateInput(text);
@@ -403,7 +411,7 @@ const PropertiesList = () => {
                 <TextInput
                   style={[styles.input, styles.dateInput]}
                   placeholder="dd/mm/yyyy"
-                  placeholderTextColor={Brand.claySoft}
+                  placeholderTextColor={brand.claySoft}
                   value={departures ? formatDisplayDate(departures) : ""}
                   onChangeText={(text) => {
                     const iso = parseDateInput(text);
@@ -518,7 +526,7 @@ const PropertiesList = () => {
                 return {
                   [selected]: {
                     selected: true,
-                    selectedColor: Brand.primary,
+                    selectedColor: brand.primary,
                   },
                 };
               })()}
@@ -531,10 +539,10 @@ const PropertiesList = () => {
                 setDatePickerField(null);
               }}
               theme={{
-                todayTextColor: Brand.primary,
-                arrowColor: Brand.primary,
-                selectedDayBackgroundColor: Brand.primary,
-                textSectionTitleColor: Brand.claySoft,
+                todayTextColor: brand.primary,
+                arrowColor: brand.primary,
+                selectedDayBackgroundColor: brand.primary,
+                textSectionTitleColor: brand.claySoft,
               }}
             />
             <Pressable
@@ -552,12 +560,14 @@ const PropertiesList = () => {
 
 export default PropertiesList;
 
-const styles = StyleSheet.create({
+function createStyles(scale: number, brand: BrandColors) {
+  const s = (n: number) => fs(n, scale);
+  return StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: Spacing.two,
     paddingTop: Spacing.one,
-    backgroundColor: Brand.sand,
+    backgroundColor: brand.sand,
   },
   homeHeader: {
     marginBottom: Spacing.three,
@@ -571,30 +581,30 @@ const styles = StyleSheet.create({
   },
   homeEyebrow: {
     flex: 1,
-    fontSize: 12,
+    fontSize: s(12),
     fontWeight: "700",
     letterSpacing: 1.2,
-    color: Brand.primary,
+    color: brand.primary,
   },
   homeTitle: {
-    fontSize: 28,
+    fontSize: s(28),
     fontWeight: "700",
-    color: Brand.ink,
+    color: brand.ink,
     fontFamily: Fonts?.serif,
-    lineHeight: 34,
+    lineHeight: s(34),
   },
   settingsButton: {
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: Brand.primary,
-    backgroundColor: Brand.white,
+    borderColor: brand.primary,
+    backgroundColor: brand.white,
   },
   settingsButtonText: {
-    color: Brand.primary,
+    color: brand.primary,
     fontWeight: "700",
-    fontSize: 14,
+    fontSize: s(14),
   },
   addRow: {
     flexDirection: "row",
@@ -611,16 +621,16 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: Brand.sandDeep,
+    borderColor: brand.sandDeep,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 8,
-    fontSize: 14,
-    color: Brand.ink,
-    backgroundColor: Brand.white,
+    fontSize: s(14),
+    color: brand.ink,
+    backgroundColor: brand.white,
   },
   confirmButton: {
-    backgroundColor: Brand.primary,
+    backgroundColor: brand.primary,
     borderRadius: 8,
     paddingVertical: 10,
     alignItems: "center",
@@ -629,9 +639,9 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   confirmText: {
-    color: Brand.white,
+    color: brand.white,
     fontWeight: "700",
-    fontSize: 14,
+    fontSize: s(14),
   },
   flatList: {
     flex: 1,
@@ -642,10 +652,10 @@ const styles = StyleSheet.create({
   },
   card: {
     padding: Spacing.two,
-    backgroundColor: Brand.white,
+    backgroundColor: brand.white,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: Brand.sandDeep,
+    borderColor: brand.sandDeep,
     gap: 6,
   },
   cardMain: {
@@ -654,28 +664,28 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   cardText: {
-    fontSize: 16,
+    fontSize: s(16),
     fontWeight: "600",
-    color: Brand.ink,
+    color: brand.ink,
   },
   cardHint: {
-    fontSize: 12,
-    color: Brand.claySoft,
+    fontSize: s(12),
+    color: brand.claySoft,
   },
   muted: {
-    color: Brand.claySoft,
-    fontSize: 14,
+    color: brand.claySoft,
+    fontSize: s(14),
   },
   deleteButton: {
-    backgroundColor: Brand.danger,
+    backgroundColor: brand.danger,
     borderRadius: 8,
     paddingVertical: 7,
     alignItems: "center",
   },
   deleteButtonText: {
-    color: Brand.white,
+    color: brand.white,
     fontWeight: "700",
-    fontSize: 12,
+    fontSize: s(12),
   },
   insightRow: {
     flexDirection: "row",
@@ -683,17 +693,17 @@ const styles = StyleSheet.create({
   },
   insightChip: {
     flex: 1,
-    backgroundColor: Brand.sand,
+    backgroundColor: brand.sand,
     borderRadius: 8,
     paddingVertical: 7,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: Brand.primary,
+    borderColor: brand.primary,
   },
   insightChipText: {
-    color: Brand.primary,
+    color: brand.primary,
     fontWeight: "600",
-    fontSize: 12,
+    fontSize: s(12),
   },
   modalOverlay: {
     flex: 1,
@@ -702,48 +712,48 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalPanel: {
-    backgroundColor: Brand.white,
+    backgroundColor: brand.white,
     borderRadius: 16,
     padding: 16,
     gap: 8,
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: s(18),
     fontWeight: "700",
-    color: Brand.ink,
+    color: brand.ink,
     marginBottom: 2,
   },
   modalLine: {
-    fontSize: 14,
-    color: Brand.ink,
-    lineHeight: 20,
+    fontSize: s(14),
+    color: brand.ink,
+    lineHeight: s(20),
   },
   modalClose: {
     marginTop: 4,
     borderWidth: 1,
-    borderColor: Brand.sandDeep,
+    borderColor: brand.sandDeep,
     borderRadius: 10,
     paddingVertical: 10,
     alignItems: "center",
   },
   modalCloseText: {
     fontWeight: "700",
-    color: Brand.ink,
+    color: brand.ink,
   },
   searchPanel: {
     marginTop: Spacing.two,
-    backgroundColor: Brand.white,
+    backgroundColor: brand.white,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: Brand.sandDeep,
+    borderColor: brand.sandDeep,
     borderStyle: "dashed",
     padding: Spacing.two,
     gap: 6,
   },
   searchTitle: {
-    fontSize: 14,
+    fontSize: s(14),
     fontWeight: "700",
-    color: Brand.ink,
+    color: brand.ink,
   },
   dateRow: {
     flexDirection: "row",
@@ -765,27 +775,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   dateIconText: {
-    fontSize: 16,
+    fontSize: s(16),
   },
   searchButton: {
-    backgroundColor: Brand.primary,
+    backgroundColor: brand.primary,
     borderRadius: 8,
     paddingVertical: 10,
     alignItems: "center",
   },
   searchButtonText: {
-    color: Brand.white,
+    color: brand.white,
     fontWeight: "700",
-    fontSize: 14,
+    fontSize: s(14),
   },
   alertBanner: {
-    backgroundColor: Brand.danger,
+    backgroundColor: brand.danger,
     borderRadius: 12,
     padding: 16,
     gap: 8,
   },
   alertText: {
-    color: Brand.white,
-    fontSize: 14,
+    color: brand.white,
+    fontSize: s(14),
   },
 });
+}
+

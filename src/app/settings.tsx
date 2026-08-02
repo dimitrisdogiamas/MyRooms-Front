@@ -1,8 +1,9 @@
-import { Brand } from "@/constants/theme";
-import { fontOptions } from "@/lib/typography";
-import { useState } from "react";
-import {
-  Pressable,
+import { type BrandColors } from "@/constants/theme";
+import { fontOptions, fs } from "@/lib/typography";
+import { useMemo } from "react";
+import { useSettings } from "@/context/SettingsProvider";
+import { useBrand } from "@/hooks/use-brand";
+import { Pressable,
   ScrollView,
   StyleSheet,
   Switch,
@@ -11,24 +12,13 @@ import {
   View,
 } from "react-native";
 
-
-type AppSettings = {
-  theme: "light" | "dark"| "system";
-  fontScale: number;
-  notifyArrival: boolean;
-  notifyDeparture: boolean;
-  minNights: number;
-
-}
-
 export default function SettingsScreen() {
-  const [notifyArrival, setNotifyArrival] = useState(true);
-  const [notifyDeparture, setNotifyDeparture] = useState(true);
-  const [minNights, setMinNights] = useState("1");
-  const [theme, setTheme] = useState<AppSettings["theme"]>("system");
-  const [fontScale, setFontScale] = useState<AppSettings["fontScale"]>(1);
-
-
+  const { settings, setSettings, saveSettings } = useSettings();
+  const brand = useBrand();
+  const styles = useMemo(
+    () => createStyles(settings.fontScale, brand),
+    [settings.fontScale, brand],
+  );
 
   return (
     <ScrollView
@@ -39,33 +29,50 @@ export default function SettingsScreen() {
       <Text style={styles.sectionTitle}>Ρυθμίσεις</Text>
       <View style={styles.card}>
         <Text style={styles.label}>Εμφάνιση Εφαρμογής</Text>
-        <View>
+        <View style={{ gap: 8 }}>
           {(["light", "dark", "system"] as const).map((t) => (
-            <Pressable key={t} onPress={() => setTheme(t)} style={[styles.themeButton, theme === t && styles.themeButtonActive]} >
-              <Text style={styles.themeButtonText}>{t === "light" ? "Λευκό" : t === "dark" ? "Σκούρο" : "Ίδιο με το σύστημα"}</Text>
+            <Pressable
+              key={t}
+              onPress={() => setSettings({ ...settings, theme: t })}
+              style={[
+                styles.themeButton,
+                settings.theme === t && styles.themeButtonActive,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.themeButtonText,
+                  settings.theme === t && styles.themeButtonTextActive,
+                ]}
+              >
+                {t === "light"
+                  ? "Λευκό"
+                  : t === "dark"
+                    ? "Σκούρο"
+                    : "Ίδιο με το σύστημα"}
+              </Text>
             </Pressable>
           ))}
         </View>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.row}>
-          Μέγεθος Κειμένου
-        </Text>
+        <Text style={styles.label}>Μέγεθος Κειμένου</Text>
         <View style={{ gap: 8 }}>
           {fontOptions.map((opt) => (
             <Pressable
               key={opt.label}
-              onPress={() => setFontScale(opt.value)}
+              onPress={() => setSettings({ ...settings, fontScale: opt.value })}
               style={[
                 styles.fontScaleButton,
-                fontScale === opt.value && styles.fontScaleButtonActive,
+                settings.fontScale === opt.value && styles.fontScaleButtonActive,
               ]}
             >
               <Text
                 style={[
                   styles.fontScaleButtonText,
-                  fontScale === opt.value && styles.fontScaleButtonTextActive,
+                  settings.fontScale === opt.value &&
+                    styles.fontScaleButtonTextActive,
                 ]}
               >
                 {opt.label}
@@ -79,18 +86,22 @@ export default function SettingsScreen() {
         <View style={styles.row}>
           <Text style={styles.label}>Ειδοποίηση άφιξης</Text>
           <Switch
-            value={notifyArrival}
-            onValueChange={setNotifyArrival}
-            trackColor={{ true: Brand.primary, false: Brand.sandDeep }}
+            value={settings.notifyArrival}
+            onValueChange={(value) =>
+              setSettings({ ...settings, notifyArrival: value })
+            }
+            trackColor={{ true: brand.primary, false: brand.sandDeep }}
           />
         </View>
         <View style={styles.divider} />
         <View style={styles.row}>
           <Text style={styles.label}>Ειδοποίηση αναχώρησης</Text>
           <Switch
-            value={notifyDeparture}
-            onValueChange={setNotifyDeparture}
-            trackColor={{ true: Brand.primary, false: Brand.sandDeep }}
+            value={settings.notifyDeparture}
+            onValueChange={(value) =>
+              setSettings({ ...settings, notifyDeparture: value })
+            }
+            trackColor={{ true: brand.primary, false: brand.sandDeep }}
           />
         </View>
       </View>
@@ -100,11 +111,20 @@ export default function SettingsScreen() {
         <Text style={styles.label}>Ελάχιστες διανυκτερεύσεις</Text>
         <TextInput
           style={styles.input}
-          value={minNights}
-          onChangeText={setMinNights}
+          value={String(settings.minNights)}
+          onChangeText={(text) => {
+            if (text === "") {
+              setSettings({ ...settings, minNights: 1 });
+              return;
+            }
+            const n = parseInt(text, 10);
+            if (!Number.isNaN(n)) {
+              setSettings({ ...settings, minNights: n });
+            }
+          }}
           keyboardType="number-pad"
           placeholder="1"
-          placeholderTextColor={Brand.claySoft}
+          placeholderTextColor={brand.claySoft}
         />
       </View>
 
@@ -113,17 +133,24 @@ export default function SettingsScreen() {
         <Text style={styles.meta}>my-rooms · v1.0.0</Text>
       </View>
 
-      <Pressable style={styles.saveButton} onPress={() => {}}>
+      <Pressable
+        style={styles.saveButton}
+        onPress={() => {
+          void saveSettings();
+        }}
+      >
         <Text style={styles.saveButtonText}>Αποθήκευση</Text>
       </Pressable>
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(scale: number, brand: BrandColors) {
+  const s = (n: number) => fs(n, scale);
+  return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Brand.sand,
+    backgroundColor: brand.sand,
   },
   content: {
     padding: 16,
@@ -133,17 +160,17 @@ const styles = StyleSheet.create({
   sectionTitle: {
     marginTop: 12,
     marginBottom: 4,
-    fontSize: 13,
+    fontSize: s(13),
     fontWeight: "700",
-    color: Brand.primary,
+    color: brand.primary,
     letterSpacing: 0.6,
     textTransform: "uppercase",
   },
   card: {
-    backgroundColor: Brand.white,
+    backgroundColor: brand.white,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: Brand.sandDeep,
+    borderColor: brand.sandDeep,
     padding: 14,
     gap: 10,
   },
@@ -155,73 +182,78 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: Brand.sandDeep,
+    backgroundColor: brand.sandDeep,
   },
   label: {
     flex: 1,
-    fontSize: 15,
-    color: Brand.ink,
+    fontSize: s(15),
+    color: brand.ink,
     fontWeight: "600",
   },
   input: {
     borderWidth: 1,
-    borderColor: Brand.sandDeep,
+    borderColor: brand.sandDeep,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    fontSize: 15,
-    color: Brand.ink,
-    backgroundColor: Brand.sand,
+    fontSize: s(15),
+    color: brand.ink,
+    backgroundColor: brand.sand,
   },
   meta: {
-    fontSize: 14,
-    color: Brand.claySoft,
+    fontSize: s(14),
+    color: brand.claySoft,
   },
   saveButton: {
     marginTop: 20,
-    backgroundColor: Brand.primary,
+    backgroundColor: brand.primary,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",
   },
   saveButtonText: {
-    color: Brand.white,
+    color: brand.white,
     fontWeight: "700",
-    fontSize: 16,
+    fontSize: s(16),
   },
   themeButton: {
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: Brand.sandDeep,
+    borderColor: brand.sandDeep,
   },
   themeButtonText: {
-    fontSize: 14,
-    color: Brand.ink,
+    fontSize: s(14),
+    color: brand.ink,
     fontWeight: "600",
   },
+  themeButtonTextActive: {
+    color: brand.white,
+  },
   themeButtonActive: {
-    backgroundColor: Brand.primary,
-    borderColor: Brand.primary,
+    backgroundColor: brand.primary,
+    borderColor: brand.primary,
   },
   fontScaleButton: {
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: Brand.sandDeep,
+    borderColor: brand.sandDeep,
   },
   fontScaleButtonActive: {
-    backgroundColor: Brand.primary,
-    borderColor: Brand.primary,
+    backgroundColor: brand.primary,
+    borderColor: brand.primary,
   },
   fontScaleButtonText: {
-    fontSize: 14,
-    color: Brand.ink,
+    fontSize: s(14),
+    color: brand.ink,
     fontWeight: "600",
   },
   fontScaleButtonTextActive: {
-    color: Brand.white,
+    color: brand.white,
   },
 });
+}
+
