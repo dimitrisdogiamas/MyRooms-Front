@@ -1,34 +1,52 @@
-// import * as Notifications from 'expo-notifications';
-// import * as Device from 'expo-device';
-// import { Platform } from 'react-native';
-// import {supabase} from './supabase';
-// export async function registerForPushNotifications(): Promise<string | null> {
-//   if (!Device.isDevice) return null;
+import * as Device from "expo-device";
+import * as Notifications from "expo-notifications";
+import Constants from "expo-constants";
+import { Platform } from "react-native";
+import { supabase } from "./supabase";
 
-//   const { status } = await Notifications.requestPermissionsAsync();
-//   if (status !== 'granted') return null;
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
+});
 
-//   const pushToken = await Notifications.getExpoPushTokenAsync();
-//   const { data, error } = await supabase.from('push_tokens').upsert({
-//     token: pushToken.data,
-//   }, {
-//     onConflict: 'token',
-//   });
-//   if (error) {
-//     console.error(error);
-//     return null;
-//   }
-//   return pushToken.data;
+export async function registerForPushNotifications(): Promise<string | null> {
+  if (!Device.isDevice) return null;
 
+  if (Platform.OS === "android") {
+    await Notifications.setNotificationChannelAsync("default", {
+      name: "default",
+      importance: Notifications.AndroidImportance.MAX,
+    });
+  }
 
+  const { status: existingStatus } = await Notifications.getPermissionsAsync();
+  let finalStatus = existingStatus;
+  if (existingStatus !== "granted") {
+    const { status } = await Notifications.requestPermissionsAsync();
+    finalStatus = status;
+  }
+  if (finalStatus !== "granted") return null;
 
-// }
+  const projectId =
+    Constants.easConfig?.projectId ??
+    Constants.expoConfig?.extra?.eas?.projectId;
+  if (!projectId) {
+    console.error("Missing EAS projectId for push token");
+    return null;
+  }
 
-//  Notifications.setNotificationHandler({
-//     handleNotification: async () => ({
-//       shouldShowBanner: true,
-//       shouldShowList: true,
-//       shouldPlaySound: true,
-//       shouldSetBadge: true,
-//     })
-// })
+  const pushToken = await Notifications.getExpoPushTokenAsync({ projectId });
+  const { error } = await supabase.from("push_tokens").upsert(
+    { token: pushToken.data },
+    { onConflict: "token" },
+  );
+  if (error) {
+    console.error(error);
+    return null;
+  }
+  return pushToken.data;
+}

@@ -16,8 +16,8 @@ export default function SettingsScreen() {
   const { settings, setSettings, saveSettings } = useSettings();
   const brand = useBrand();
   const styles = useMemo(
-    () => createStyles(settings.fontScale, brand),
-    [settings.fontScale, brand],
+    () => createStyles(settings.fontScale, brand, settings.compactMode),
+    [settings.fontScale, settings.compactMode, brand],
   );
 
   return (
@@ -106,6 +106,20 @@ export default function SettingsScreen() {
         </View>
       </View>
 
+
+      <View style={styles.card}>
+        <View style={styles.row}>
+          <Text style={styles.label}>Συμπαγής εμφάνιση</Text>
+          <Switch
+            value={settings.compactMode}
+            onValueChange={(value) =>
+              setSettings({ ...settings, compactMode: value })
+            }
+            trackColor={{ true: brand.primary, false: brand.sandDeep }}
+          />
+        </View>
+      </View>
+
       <Text style={styles.sectionTitle}>Κρατήσεις</Text>
       <View style={styles.card}>
         <Text style={styles.label}>Ελάχιστες διανυκτερεύσεις</Text>
@@ -145,115 +159,115 @@ export default function SettingsScreen() {
   );
 }
 
-function createStyles(scale: number, brand: BrandColors) {
+function createStyles(scale: number, brand: BrandColors, compactMode: boolean) {
   const s = (n: number) => fs(n, scale);
   return StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: brand.sand,
-  },
-  content: {
-    padding: 16,
-    gap: 8,
-    paddingBottom: 40,
-  },
-  sectionTitle: {
-    marginTop: 12,
-    marginBottom: 4,
-    fontSize: s(13),
-    fontWeight: "700",
-    color: brand.primary,
-    letterSpacing: 0.6,
-    textTransform: "uppercase",
-  },
-  card: {
-    backgroundColor: brand.white,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: brand.sandDeep,
-    padding: 14,
-    gap: 10,
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: brand.sandDeep,
-  },
-  label: {
-    flex: 1,
-    fontSize: s(15),
-    color: brand.ink,
-    fontWeight: "600",
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: brand.sandDeep,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: s(15),
-    color: brand.ink,
-    backgroundColor: brand.sand,
-  },
-  meta: {
-    fontSize: s(14),
-    color: brand.claySoft,
-  },
-  saveButton: {
-    marginTop: 20,
-    backgroundColor: brand.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  saveButtonText: {
-    color: brand.white,
-    fontWeight: "700",
-    fontSize: s(16),
-  },
-  themeButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: brand.sandDeep,
-  },
-  themeButtonText: {
-    fontSize: s(14),
-    color: brand.ink,
-    fontWeight: "600",
-  },
-  themeButtonTextActive: {
-    color: brand.white,
-  },
-  themeButtonActive: {
-    backgroundColor: brand.primary,
-    borderColor: brand.primary,
-  },
-  fontScaleButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: brand.sandDeep,
-  },
-  fontScaleButtonActive: {
-    backgroundColor: brand.primary,
-    borderColor: brand.primary,
-  },
-  fontScaleButtonText: {
-    fontSize: s(14),
-    color: brand.ink,
-    fontWeight: "600",
-  },
-  fontScaleButtonTextActive: {
-    color: brand.white,
-  },
-});
+    container: {
+      flex: 1,
+      backgroundColor: brand.sand,
+    },
+    content: {
+      padding: compactMode ? 8 : 16,
+      gap: compactMode ? 6 : 8,
+      paddingBottom: compactMode ? 24 : 40,
+    },
+    sectionTitle: {
+      marginTop: compactMode ? 8 : 12,
+      marginBottom: 4,
+      fontSize: s(13),
+      fontWeight: "700",
+      color: brand.primary,
+      letterSpacing: 0.6,
+      textTransform: "uppercase",
+    },
+    card: {
+      backgroundColor: brand.white,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: brand.sandDeep,
+      padding: compactMode ? 8 : 14,
+      gap: compactMode ? 6 : 10,
+    },
+    row: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 12,
+    },
+    divider: {
+      height: 1,
+      backgroundColor: brand.sandDeep,
+    },
+    label: {
+      flex: 1,
+      fontSize: s(15),
+      color: brand.ink,
+      fontWeight: "600",
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: brand.sandDeep,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: compactMode ? 8 : 10,
+      fontSize: s(15),
+      color: brand.ink,
+      backgroundColor: brand.sand,
+    },
+    meta: {
+      fontSize: s(14),
+      color: brand.claySoft,
+    },
+    saveButton: {
+      marginTop: compactMode ? 12 : 20,
+      backgroundColor: brand.primary,
+      borderRadius: 12,
+      paddingVertical: compactMode ? 10 : 14,
+      alignItems: "center",
+    },
+    saveButtonText: {
+      color: brand.white,
+      fontWeight: "700",
+      fontSize: s(16),
+    },
+    themeButton: {
+      paddingVertical: compactMode ? 6 : 8,
+      paddingHorizontal: 12,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: brand.sandDeep,
+    },
+    themeButtonText: {
+      fontSize: s(14),
+      color: brand.ink,
+      fontWeight: "600",
+    },
+    themeButtonTextActive: {
+      color: brand.white,
+    },
+    themeButtonActive: {
+      backgroundColor: brand.primary,
+      borderColor: brand.primary,
+    },
+    fontScaleButton: {
+      paddingVertical: compactMode ? 6 : 8,
+      paddingHorizontal: 12,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: brand.sandDeep,
+    },
+    fontScaleButtonActive: {
+      backgroundColor: brand.primary,
+      borderColor: brand.primary,
+    },
+    fontScaleButtonText: {
+      fontSize: s(14),
+      color: brand.ink,
+      fontWeight: "600",
+    },
+    fontScaleButtonTextActive: {
+      color: brand.white,
+    },
+  });
 }
 
