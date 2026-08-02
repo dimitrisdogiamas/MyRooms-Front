@@ -7,6 +7,7 @@ export type AppSettings = {
   notifyArrival: boolean;
   notifyDeparture: boolean;
   minNights: number;
+  compactMode: boolean;
 };
 
 const STORAGE_KEY = "settings";
@@ -17,6 +18,7 @@ const defaultSettings: AppSettings = {
   notifyArrival: true,
   notifyDeparture: true,
   minNights: 1,
+  compactMode: false,
 };
 
 const SettingsContext = createContext<{
