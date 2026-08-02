@@ -1,5 +1,8 @@
-import { Brand } from "@/constants/theme";
-import { useState, useEffect, useCallback } from "react";
+import { type BrandColors } from "@/constants/theme";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { fs } from "@/lib/typography";
+import { useSettings } from "@/context/SettingsProvider";
+import { useBrand } from "@/hooks/use-brand";
 import { Pressable, View, StyleSheet, TextInput } from "react-native";
 import { ThemedText } from "./themed-text";
 import { supabase } from "@/lib/supabase";
@@ -24,6 +27,9 @@ const RoomsSelector = ({
 }: RoomsSelectorProps) => {
   const [adding, setAdding] = useState(false);
   const [newRoomName, setNewRoomName] = useState("");
+  const { settings } = useSettings();
+  const brand = useBrand();
+  const styles = useMemo(() => createStyles(settings.fontScale, brand), [settings.fontScale, brand]);
 
   const fetchRooms = useCallback(async () => {
     const { data, error } = await supabase
@@ -69,7 +75,7 @@ const RoomsSelector = ({
           <TextInput
             style={styles.input}
             placeholder="Ταμπέλα δωματίου (π.χ. 101)"
-            placeholderTextColor={Brand.claySoft}
+            placeholderTextColor={brand.claySoft}
             value={newRoomName}
             onChangeText={setNewRoomName}
             autoFocus
@@ -91,7 +97,9 @@ const RoomsSelector = ({
   );
 };
 
-const styles = StyleSheet.create({
+function createStyles(scale: number, brand: BrandColors) {
+  const s = (n: number) => fs(n, scale);
+  return StyleSheet.create({
   wrapper: {
     marginBottom: 12,
   },
@@ -100,12 +108,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderRadius: 12,
-    backgroundColor: Brand.primary,
+    backgroundColor: brand.primary,
     alignItems: "center",
   },
   addButtonText: {
-    color: Brand.white,
-    fontSize: 15,
+    color: brand.white,
+    fontSize: s(15),
     fontWeight: "700",
   },
   addRow: {
@@ -117,26 +125,28 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     borderWidth: 1,
-    borderColor: Brand.sandDeep,
+    borderColor: brand.sandDeep,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 8,
-    backgroundColor: Brand.white,
-    color: Brand.ink,
+    backgroundColor: brand.white,
+    color: brand.ink,
   },
   confirmButton: {
-    backgroundColor: Brand.primary,
+    backgroundColor: brand.primary,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 8,
   },
   confirmText: {
-    color: Brand.white,
+    color: brand.white,
     fontWeight: "600",
   },
   cancelText: {
-    color: Brand.claySoft,
+    color: brand.claySoft,
   },
 });
+}
+
 
 export default RoomsSelector;

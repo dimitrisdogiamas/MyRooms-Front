@@ -1,19 +1,20 @@
 import { Booking, BookingsList } from "@/components/BookingsList";
 import { RoomPlate } from "@/components/RoomPlate";
 import RoomsSelector, { Room } from "@/components/RoomsSelector";
-import { Brand, Fonts } from "@/constants/theme";
+import { Fonts, type BrandColors } from "@/constants/theme";
 import { addDays } from "@/lib/bookingInsights";
-import {
-  getBookingIncome,
+import { getBookingIncome,
   getPriceForNight,
   getRoomIncome,
   type RoomPricing,
 } from "@/lib/roomPricing";
 import { supabase } from "@/lib/supabase";
+import { fs } from "@/lib/typography";
+import { useSettings } from "@/context/SettingsProvider";
+import { useBrand } from "@/hooks/use-brand";
 import { Stack, useLocalSearchParams } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
-import {
-  Alert,
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Alert,
   ImageBackground,
   Modal,
   Platform,
@@ -72,7 +73,10 @@ function countNights(start: string, end: string): number {
   return nights;
 }
 
-function buildAvailabilityFromBookings(bookings: Booking[]): RoomsAvailability {
+function buildAvailabilityFromBookings(
+  bookings: Booking[],
+  brand: BrandColors,
+): RoomsAvailability {
   const result: RoomsAvailability = {};
 
   for (const booking of bookings) {
@@ -84,8 +88,8 @@ function buildAvailabilityFromBookings(bookings: Booking[]): RoomsAvailability {
     while (current <= booking.end_date) {
       const isEnd = current === booking.end_date;
       result[booking.room_id][current] = {
-        color: isEnd ? Brand.calendarTurnover : Brand.calendarBlue,
-        textColor: Brand.white,
+        color: isEnd ? brand.calendarTurnover : brand.calendarBlue,
+        textColor: brand.white,
         startingDay: current === booking.start_date,
         endingDay: isEnd,
         kind: isEnd ? "departure" : "stay",
@@ -102,8 +106,8 @@ function buildAvailabilityFromBookings(bookings: Booking[]): RoomsAvailability {
     for (const date of starts) {
       if (!ends.has(date)) continue;
       result[roomId][date] = {
-        color: Brand.calendarBlue,
-        textColor: Brand.white,
+        color: brand.calendarBlue,
+        textColor: brand.white,
         startingDay: true,
         endingDay: true,
         kind: "split",
@@ -145,6 +149,13 @@ export default function PropertyScreen() {
   const [notifyArrival, setNotifyArrival] = useState(true);
   const [notifyDeparture, setNotifyDeparture] = useState(true);
   const [savingBooking, setSavingBooking] = useState(false);
+
+  const { settings } = useSettings();
+  const brand = useBrand();
+  const styles = useMemo(
+    () => createStyles(settings.fontScale, brand),
+    [settings.fontScale, brand],
+  );
 
   const fetchPropertyData = useCallback(async () => {
     setLoading(true);
@@ -206,7 +217,7 @@ export default function PropertyScreen() {
     } else {
       const nextBookings = bookingsRes.data ?? [];
       setBookings(nextBookings);
-      setRoomAvailability(buildAvailabilityFromBookings(nextBookings));
+      setRoomAvailability(buildAvailabilityFromBookings(nextBookings, brand));
     }
 
     if (pricesRes.error) {
@@ -224,7 +235,7 @@ export default function PropertyScreen() {
     }
 
     setLoading(false);
-  }, [propertyId]);
+  }, [propertyId, brand]);
 
   useEffect(() => {
     fetchPropertyData();
@@ -514,30 +525,30 @@ export default function PropertyScreen() {
       ...base,
       [selectStartDate]: {
         ...(base[selectStartDate] ?? {
-          textColor: Brand.ink,
+          textColor: brand.ink,
         }),
         selected: true,
-        textColor: base[selectStartDate]?.textColor ?? Brand.ink,
+        textColor: base[selectStartDate]?.textColor ?? brand.ink,
       },
     };
   }
 
   const calendarTheme = {
-    backgroundColor: Brand.white,
-    calendarBackground: Brand.white,
-    textSectionTitleColor: Brand.claySoft,
-    selectedDayBackgroundColor: Brand.primary,
-    todayTextColor: Brand.primary,
-    dayTextColor: Brand.ink,
-    arrowColor: Brand.primary,
-    monthTextColor: Brand.ink,
+    backgroundColor: brand.white,
+    calendarBackground: brand.white,
+    textSectionTitleColor: brand.claySoft,
+    selectedDayBackgroundColor: brand.primary,
+    todayTextColor: brand.primary,
+    dayTextColor: brand.ink,
+    arrowColor: brand.primary,
+    monthTextColor: brand.ink,
     textMonthFontWeight: "700" as const,
   };
 
   return (
     <View style={styles.root}>
       <Stack.Screen
-        options={{ title: propertyName, headerTintColor: Brand.primary }}
+        options={{ title: propertyName, headerTintColor: brand.primary }}
       />
       <ImageBackground
         source={require("@/assets/images/licensed-image.jpg")}
@@ -648,12 +659,12 @@ export default function PropertyScreen() {
                             : undefined;
                         const onColored = Boolean(bg) || isSplit;
                         const textColor = onColored
-                          ? Brand.white
+                          ? brand.white
                           : isOutsideMonth
-                            ? Brand.claySoft
+                            ? brand.claySoft
                             : state === "today"
-                              ? Brand.primary
-                              : Brand.ink;
+                              ? brand.primary
+                              : brand.ink;
 
                         return (
                           <Pressable
@@ -678,7 +689,7 @@ export default function PropertyScreen() {
                                 <View
                                   style={[
                                     StyleSheet.absoluteFill,
-                                    { backgroundColor: Brand.calendarBlue },
+                                    { backgroundColor: brand.calendarBlue },
                                   ]}
                                 />
                                 <View style={styles.daySplitTriangle} />
@@ -694,8 +705,8 @@ export default function PropertyScreen() {
                                 styles.dayPrice,
                                 {
                                   color: onColored
-                                    ? Brand.white
-                                    : Brand.claySoft,
+                                    ? brand.white
+                                    : brand.claySoft,
                                 },
                               ]}
                             >
@@ -711,7 +722,7 @@ export default function PropertyScreen() {
                         <View
                           style={[
                             styles.dot,
-                            { backgroundColor: Brand.calendarBlue },
+                            { backgroundColor: brand.calendarBlue },
                           ]}
                         />
                         <Text style={styles.legendText}>Διαμονή</Text>
@@ -825,7 +836,7 @@ export default function PropertyScreen() {
                 <TextInput
                   style={styles.bookingGuestInput}
                   placeholder="Όνομα πελάτη"
-                  placeholderTextColor={Brand.claySoft}
+                  placeholderTextColor={brand.claySoft}
                   value={guestName}
                   onChangeText={setGuestName}
                 />
@@ -935,7 +946,7 @@ export default function PropertyScreen() {
                 <TextInput
                   style={styles.priceInput}
                   placeholder="dd/mm/yyyy"
-                  placeholderTextColor={Brand.claySoft}
+                  placeholderTextColor={brand.claySoft}
                   value={priceStart ? formatDisplayDate(priceStart) : ""}
                   onChangeText={(text) => {
                     setPriceStart(parseDateInput(text) ?? text);
@@ -952,7 +963,7 @@ export default function PropertyScreen() {
                 <TextInput
                   style={styles.priceInput}
                   placeholder="dd/mm/yyyy"
-                  placeholderTextColor={Brand.claySoft}
+                  placeholderTextColor={brand.claySoft}
                   value={priceEnd ? formatDisplayDate(priceEnd) : ""}
                   onChangeText={(text) => {
                     setPriceEnd(parseDateInput(text) ?? text);
@@ -970,7 +981,7 @@ export default function PropertyScreen() {
             <TextInput
               style={styles.priceInput}
               placeholder="€ / διανυκτέρευση"
-              placeholderTextColor={Brand.claySoft}
+              placeholderTextColor={brand.claySoft}
               value={priceAmount}
               onChangeText={setPriceAmount}
               keyboardType="decimal-pad"
@@ -1020,9 +1031,9 @@ export default function PropertyScreen() {
                 setPriceDateField(null);
               }}
               theme={{
-                todayTextColor: Brand.primary,
-                arrowColor: Brand.primary,
-                selectedDayBackgroundColor: Brand.primary,
+                todayTextColor: brand.primary,
+                arrowColor: brand.primary,
+                selectedDayBackgroundColor: brand.primary,
               }}
             />
             <Pressable
@@ -1038,10 +1049,12 @@ export default function PropertyScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(scale: number, brand: BrandColors) {
+  const s = (n: number) => fs(n, scale);
+  return StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: Brand.ink,
+    backgroundColor: brand.ink,
   },
   backgroundImage: {
     flex: 1,
@@ -1064,29 +1077,29 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   heroEyebrow: {
-    color: Brand.primary,
-    fontSize: 13,
+    color: brand.primary,
+    fontSize: s(13),
     fontWeight: "600",
     letterSpacing: 1,
     textTransform: "uppercase",
     marginBottom: 6,
   },
   heroTitle: {
-    color: Brand.white,
-    fontSize: 32,
+    color: brand.white,
+    fontSize: s(32),
     fontWeight: "800",
     marginBottom: 6,
   },
   heroSubtitle: {
     color: "rgba(255,255,255,0.85)",
-    fontSize: 15,
+    fontSize: s(15),
   },
   panel: {
-    backgroundColor: Brand.sand,
+    backgroundColor: brand.sand,
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
-    borderColor: Brand.sandDeep,
+    borderColor: brand.sandDeep,
   },
   legendPanel: {
     backgroundColor: "rgba(247, 241, 234, 0.9)",
@@ -1095,9 +1108,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   panelTitle: {
-    fontSize: 17,
+    fontSize: s(17),
     fontWeight: "700",
-    color: Brand.ink,
+    color: brand.ink,
     marginBottom: 0,
     flex: 1,
   },
@@ -1105,7 +1118,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: Brand.primary,
+    backgroundColor: brand.primary,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderTopLeftRadius: 14,
@@ -1117,53 +1130,53 @@ const styles = StyleSheet.create({
   roomHeaderTitle: {
     flex: 1,
     flexShrink: 1,
-    color: Brand.white,
-    fontSize: 16,
+    color: brand.white,
+    fontSize: s(16),
     fontWeight: "700",
   },
   pricesButton: {
-    backgroundColor: Brand.primary,
+    backgroundColor: brand.primary,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: Brand.white,
+    borderColor: brand.white,
   },
   pricesButtonText: {
-    color: Brand.white,
+    color: brand.white,
     fontWeight: "700",
-    fontSize: 13,
+    fontSize: s(13),
   },
   deleteRoomButton: {
-    backgroundColor: Brand.danger,
+    backgroundColor: brand.danger,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,
   },
   deleteRoomButtonText: {
-    color: Brand.white,
+    color: brand.white,
     fontWeight: "700",
-    fontSize: 13,
+    fontSize: s(13),
   },
   incomeText: {
     marginTop: 12,
-    fontSize: 14,
+    fontSize: s(14),
     fontWeight: "600",
-    color: Brand.ink,
+    color: brand.ink,
   },
   bookingsTitle: {
-    fontSize: 14,
+    fontSize: s(14),
     fontWeight: "700",
-    color: Brand.primary,
+    color: brand.primary,
     marginTop: 14,
     marginBottom: 8,
   },
   hint: {
-    fontSize: 12,
-    color: Brand.claySoft,
+    fontSize: s(12),
+    color: brand.claySoft,
     marginBottom: 8,
     marginTop: 4,
-    lineHeight: 16,
+    lineHeight: s(16),
   },
   legend: {
     flexDirection: "row",
@@ -1190,11 +1203,11 @@ const styles = StyleSheet.create({
   },
   dotSplitTeal: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: Brand.calendarBlue,
+    backgroundColor: brand.calendarBlue,
   },
   dotSplitSand: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: Brand.sandDeep,
+    backgroundColor: brand.sandDeep,
   },
   dotSplitOrange: {
     position: "absolute",
@@ -1204,12 +1217,12 @@ const styles = StyleSheet.create({
     height: 0,
     borderTopWidth: 10,
     borderRightWidth: 10,
-    borderTopColor: Brand.calendarTurnover,
+    borderTopColor: brand.calendarTurnover,
     borderRightColor: "transparent",
   },
   legendText: {
-    fontSize: 11,
-    color: Brand.claySoft,
+    fontSize: s(11),
+    color: brand.claySoft,
   },
   calendar: {
     width: "100%",
@@ -1225,26 +1238,26 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalPanel: {
-    backgroundColor: Brand.white,
+    backgroundColor: brand.white,
     borderRadius: 24,
     padding: 22,
     gap: 12,
   },
   modalDate: {
-    fontSize: 28,
+    fontSize: s(28),
     fontWeight: "700",
-    color: Brand.ink,
+    color: brand.ink,
   },
   modalSubtitle: {
-    fontSize: 15,
-    color: Brand.claySoft,
+    fontSize: s(15),
+    color: brand.claySoft,
     marginBottom: 4,
   },
   optionRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: Brand.sand,
+    backgroundColor: brand.sand,
     borderRadius: 14,
     paddingVertical: 16,
     paddingHorizontal: 14,
@@ -1252,74 +1265,74 @@ const styles = StyleSheet.create({
     borderColor: "transparent",
   },
   optionRowActive: {
-    borderColor: Brand.primary,
-    backgroundColor: Brand.sandDeep,
+    borderColor: brand.primary,
+    backgroundColor: brand.sandDeep,
   },
   optionEmoji: {
-    fontSize: 22,
+    fontSize: s(22),
   },
   optionLabel: {
-    fontSize: 16,
+    fontSize: s(16),
     fontWeight: "600",
-    color: Brand.ink,
+    color: brand.ink,
     flex: 1,
   },
   modalConfirm: {
     marginTop: 4,
     paddingVertical: 14,
     borderRadius: 14,
-    backgroundColor: Brand.primary,
+    backgroundColor: brand.primary,
     alignItems: "center",
   },
   modalConfirmText: {
-    color: Brand.white,
+    color: brand.white,
     fontWeight: "700",
-    fontSize: 16,
+    fontSize: s(16),
   },
   modalCancel: {
     paddingVertical: 14,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: Brand.sandDeep,
+    borderColor: brand.sandDeep,
     alignItems: "center",
-    backgroundColor: Brand.white,
+    backgroundColor: brand.white,
   },
   modalCancelText: {
-    color: Brand.ink,
+    color: brand.ink,
     fontWeight: "700",
-    fontSize: 16,
+    fontSize: s(16),
   },
   priceRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: Brand.sand,
+    backgroundColor: brand.sand,
     borderRadius: 12,
     padding: 10,
   },
   priceRowText: {
     flex: 1,
-    fontSize: 13,
-    color: Brand.ink,
+    fontSize: s(13),
+    color: brand.ink,
     fontWeight: "600",
   },
   priceDelete: {
     borderWidth: 1,
-    borderColor: Brand.danger,
+    borderColor: brand.danger,
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 6,
   },
   priceDeleteText: {
-    color: Brand.danger,
+    color: brand.danger,
     fontWeight: "700",
-    fontSize: 12,
+    fontSize: s(12),
   },
   priceSectionTitle: {
     marginTop: 4,
-    fontSize: 15,
+    fontSize: s(15),
     fontWeight: "700",
-    color: Brand.ink,
+    color: brand.ink,
   },
   priceDateRow: {
     flexDirection: "row",
@@ -1332,14 +1345,14 @@ const styles = StyleSheet.create({
   },
   priceInput: {
     borderWidth: 1,
-    borderColor: Brand.sandDeep,
+    borderColor: brand.sandDeep,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
     paddingRight: 36,
-    fontSize: 14,
-    color: Brand.ink,
-    backgroundColor: Brand.sand,
+    fontSize: s(14),
+    color: brand.ink,
+    backgroundColor: brand.sand,
   },
   priceCalendarBtn: {
     position: "absolute",
@@ -1367,14 +1380,14 @@ const styles = StyleSheet.create({
     marginVertical: 1,
   },
   dayCellIdle: {
-    backgroundColor: Brand.sand,
+    backgroundColor: brand.sand,
   },
   dayCellOutside: {
     opacity: 0.45,
   },
   dayCellSelected: {
     borderWidth: 1.5,
-    borderColor: Brand.ink,
+    borderColor: brand.ink,
   },
   daySplitTriangle: {
     position: "absolute",
@@ -1384,54 +1397,54 @@ const styles = StyleSheet.create({
     height: 0,
     borderTopWidth: 32,
     borderRightWidth: 32,
-    borderTopColor: Brand.calendarTurnover,
+    borderTopColor: brand.calendarTurnover,
     borderRightColor: "transparent",
   },
   dayNumber: {
-    fontSize: 10,
-    lineHeight: 11,
+    fontSize: s(10),
+    lineHeight: s(11),
     fontWeight: "600",
     zIndex: 1,
   },
   dayPrice: {
-    fontSize: 6,
-    lineHeight: 7,
+    fontSize: s(6),
+    lineHeight: s(7),
     marginTop: 0,
     zIndex: 1,
   },
   bookingModalPanel: {
-    backgroundColor: Brand.white,
+    backgroundColor: brand.white,
     borderRadius: 20,
     padding: 22,
     gap: 12,
   },
   bookingModalTitle: {
-    fontSize: 24,
+    fontSize: s(24),
     fontWeight: "700",
-    color: Brand.ink,
+    color: brand.ink,
     fontFamily: Fonts?.serif,
   },
   bookingModalDates: {
-    fontSize: 13,
-    color: Brand.claySoft,
+    fontSize: s(13),
+    color: brand.claySoft,
     fontFamily: Fonts?.mono,
   },
   bookingModalCost: {
-    fontSize: 15,
-    color: Brand.ink,
+    fontSize: s(15),
+    color: brand.ink,
   },
   bookingModalCostValue: {
     fontWeight: "700",
   },
   bookingGuestInput: {
     borderWidth: 1,
-    borderColor: Brand.sandDeep,
+    borderColor: brand.sandDeep,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    fontSize: 15,
-    color: Brand.ink,
-    backgroundColor: Brand.white,
+    fontSize: s(15),
+    color: brand.ink,
+    backgroundColor: brand.white,
   },
   checkboxRow: {
     flexDirection: "row",
@@ -1444,23 +1457,23 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 6,
     borderWidth: 1.5,
-    borderColor: Brand.claySoft,
+    borderColor: brand.claySoft,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: Brand.white,
+    backgroundColor: brand.white,
   },
   checkboxChecked: {
-    backgroundColor: Brand.calendarBlue,
-    borderColor: Brand.calendarBlue,
+    backgroundColor: brand.calendarBlue,
+    borderColor: brand.calendarBlue,
   },
   checkboxTick: {
-    color: Brand.white,
-    fontSize: 14,
+    color: brand.white,
+    fontSize: s(14),
     fontWeight: "700",
   },
   checkboxLabel: {
-    fontSize: 14,
-    color: Brand.ink,
+    fontSize: s(14),
+    color: brand.ink,
     flex: 1,
   },
   bookingModalActions: {
@@ -1471,24 +1484,26 @@ const styles = StyleSheet.create({
   },
   bookingCancelBtn: {
     borderWidth: 1,
-    borderColor: Brand.sandDeep,
+    borderColor: brand.sandDeep,
     borderRadius: 20,
     paddingHorizontal: 18,
     paddingVertical: 10,
-    backgroundColor: Brand.white,
+    backgroundColor: brand.white,
   },
   bookingCancelText: {
-    color: Brand.ink,
+    color: brand.ink,
     fontWeight: "600",
   },
   bookingSaveBtn: {
-    backgroundColor: Brand.calendarBlue,
+    backgroundColor: brand.calendarBlue,
     borderRadius: 20,
     paddingHorizontal: 18,
     paddingVertical: 10,
   },
   bookingSaveText: {
-    color: Brand.white,
+    color: brand.white,
     fontWeight: "700",
   },
 });
+}
+

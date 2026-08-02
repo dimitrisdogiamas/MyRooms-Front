@@ -2,8 +2,11 @@ import { supabase } from '@/lib/supabase';
 import { ThemedText } from './themed-text';
 import { FlatList, View, Pressable, StyleSheet } from 'react-native';
 import type { Room } from './RoomsSelector';
-import { Brand } from '@/constants/theme';
-import { useState } from 'react';
+import { type BrandColors } from '@/constants/theme';
+import { useMemo, useState } from 'react';
+import { fs } from '@/lib/typography';
+import { useSettings } from '@/context/SettingsProvider';
+import { useBrand } from '@/hooks/use-brand';
 
 export type Booking = {
   id: string;
@@ -32,6 +35,9 @@ export const BookingsList = ({
 
   const [departureNote, setDepartureNote] = useState<string | null>();
   const [noteText, setNoteText] = useState<string>('');
+  const { settings } = useSettings();
+  const brand = useBrand();
+  const styles = useMemo(() => createStyles(settings.fontScale, brand), [settings.fontScale, brand]);
   
 
 
@@ -84,16 +90,18 @@ export const BookingsList = ({
   );
 };
 
-const styles = StyleSheet.create({
+function createStyles(scale: number, brand: BrandColors) {
+  const s = (n: number) => fs(n, scale);
+  return StyleSheet.create({
   muted: {
-    color: Brand.claySoft,
-    fontSize: 14,
+    color: brand.claySoft,
+    fontSize: s(14),
   },
   card: {
-    backgroundColor: Brand.white,
+    backgroundColor: brand.white,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: Brand.sandDeep,
+    borderColor: brand.sandDeep,
     padding: 12,
     marginBottom: 10,
   },
@@ -106,23 +114,25 @@ const styles = StyleSheet.create({
   },
   roomLabel: {
     fontWeight: '700',
-    color: Brand.ink,
+    color: brand.ink,
     flexShrink: 1,
   },
   dates: {
-    color: Brand.claySoft,
-    fontSize: 13,
+    color: brand.claySoft,
+    fontSize: s(13),
   },
   cancelButton: {
     alignSelf: 'flex-end',
     paddingVertical: 6,
     paddingHorizontal: 12,
-    backgroundColor: Brand.danger,
+    backgroundColor: brand.danger,
     borderRadius: 8,
   },
   cancelText: {
-    color: Brand.white,
-    fontSize: 13,
+    color: brand.white,
+    fontSize: s(13),
     fontWeight: '600',
   },
 });
+}
+

@@ -1,4 +1,8 @@
-import { Brand } from "@/constants/theme";
+import { type BrandColors } from "@/constants/theme";
+import { useSettings } from "@/context/SettingsProvider";
+import { useBrand } from "@/hooks/use-brand";
+import { fs } from "@/lib/typography";
+import { useMemo } from "react";
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 
 type RoomPlateProps = {
@@ -14,6 +18,9 @@ export function RoomPlate({
   compact = false,
   style,
 }: RoomPlateProps) {
+  const { settings } = useSettings();
+  const brand = useBrand();
+  const styles = useMemo(() => createStyles(settings.fontScale, brand), [settings.fontScale, brand]);
   return (
     <View
       style={[
@@ -35,15 +42,17 @@ export function RoomPlate({
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(scale: number, brand: BrandColors) {
+  const s = (n: number) => fs(n, scale);
+  return StyleSheet.create({
   plate: {
     minWidth: 72,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 8,
-    backgroundColor: Brand.sand,
+    backgroundColor: brand.sand,
     borderWidth: 1.5,
-    borderColor: Brand.primary,
+    borderColor: brand.primary,
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
@@ -54,8 +63,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   plateActive: {
-    backgroundColor: Brand.primary,
-    borderColor: Brand.primary,
+    backgroundColor: brand.primary,
+    borderColor: brand.primary,
   },
   screwLeft: {
     position: "absolute",
@@ -64,7 +73,7 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 3,
-    backgroundColor: Brand.claySoft,
+    backgroundColor: brand.claySoft,
     opacity: 0.55,
   },
   screwRight: {
@@ -74,19 +83,21 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 3,
-    backgroundColor: Brand.claySoft,
+    backgroundColor: brand.claySoft,
     opacity: 0.55,
   },
   label: {
-    fontSize: 15,
+    fontSize: s(15),
     fontWeight: "700",
-    color: Brand.ink,
+    color: brand.ink,
     letterSpacing: 0.5,
   },
   labelCompact: {
-    fontSize: 13,
+    fontSize: s(13),
   },
   labelActive: {
-    color: Brand.white,
+    color: brand.white,
   },
 });
+}
+

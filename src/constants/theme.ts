@@ -7,8 +7,7 @@ import '@/global.css';
 
 import { Platform } from 'react-native';
 
-/** Resort palette used across home / booking screens */
-export const Brand = {
+const brandLight = {
   sand: '#f7f1ea',
   sandDeep: '#efe4d6',
   clay: '#5f6f6c',
@@ -24,20 +23,46 @@ export const Brand = {
   calendarTurnover: '#e08a3a',
 } as const;
 
+/** Dark surfaces keep the resort teal mood, not pure black */
+const brandDark = {
+  sand: '#141c1b',
+  sandDeep: '#1e2a28',
+  clay: '#a8b5b2',
+  claySoft: '#8f9e9b',
+  gold: '#d4b896',
+  goldDark: '#c9a876',
+  ink: '#f2ebe3',
+  danger: '#e74c3c',
+  white: '#1c2624',
+  primary: '#4a9e97',
+  calendarBlue: '#4a9e97',
+  calendarTurnover: '#e08a3a',
+} as const;
+
+export const BrandPalettes = {
+  light: brandLight,
+  dark: brandDark,
+} as const;
+
+export type BrandColors = (typeof BrandPalettes)[keyof typeof BrandPalettes];
+
+/** Default / light palette — prefer `useBrand()` in screens */
+export const Brand = BrandPalettes.light;
+
 export const Colors = {
   light: {
-    text: Brand.ink,
-    background: Brand.sand,
-    backgroundElement: Brand.sandDeep,
-    backgroundSelected: Brand.primary,
-    textSecondary: Brand.claySoft,
+    text: brandLight.ink,
+    background: brandLight.sand,
+    backgroundElement: brandLight.sandDeep,
+    backgroundSelected: brandLight.primary,
+    textSecondary: brandLight.claySoft,
   },
   dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
+    text: brandDark.ink,
+    background: brandDark.sand,
+    backgroundElement: brandDark.sandDeep,
+    backgroundSelected: brandDark.primary,
+    textSecondary: brandDark.claySoft,
   },
 } as const;
 
