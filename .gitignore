@@ -46,3 +46,4 @@ example
 
 *-firebase-adminsdk-*.json
 service-account*.json
+google-services.json
