@@ -438,20 +438,23 @@ const PropertiesList = () => {
         }
         renderItem={({ item }) => (
           <View style={styles.card}>
-            <Pressable
-              style={styles.cardMain}
-              onPress={() => router.push(`/property/${item.id}`)}
-            >
-              <ThemedText style={styles.cardText}>{item.name}</ThemedText>
-              <ThemedText style={styles.cardHint}>Κρατήσεις →</ThemedText>
-            </Pressable>
-            <Pressable
-              style={styles.deleteButton}
-              onPress={() => deleteProperty(item.id)}
-              disabled={deleting}
-            >
-              <ThemedText style={styles.deleteButtonText}>Διαγραφή</ThemedText>
-            </Pressable>
+            <View style={styles.cardMain}>
+              <Pressable
+                style={styles.cardBinBtn}
+                onPress={() => deleteProperty(item.id)}
+                disabled={deleting}
+                hitSlop={8}
+              >
+                <Text style={styles.cardBin}>🗑️</Text>
+              </Pressable>
+              <Pressable
+                style={styles.cardTitleBtn}
+                onPress={() => router.push(`/property/${item.id}`)}
+              >
+                <ThemedText style={styles.cardText}>{item.name}</ThemedText>
+              </Pressable>
+              <ThemedText style={styles.cardHint}>{">"}</ThemedText>
+            </View>
             <View style={styles.insightRow}>
               <Pressable
                 style={styles.insightChip}
@@ -661,14 +664,33 @@ function createStyles(scale: number, brand: BrandColors) {
   cardMain: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "center",
+    position: "relative",
+    minHeight: 28,
+  },
+  cardBinBtn: {
+    position: "absolute",
+    left: 0,
+    zIndex: 1,
+    padding: 4,
+  },
+  cardBin: {
+    fontSize: s(16),
+  },
+  cardTitleBtn: {
+    flex: 1,
+    alignItems: "center",
+    paddingHorizontal: 36,
   },
   cardText: {
     fontSize: s(16),
     fontWeight: "600",
     color: brand.ink,
+    textAlign: "center",
   },
   cardHint: {
+    position: "absolute",
+    right: 0,
     fontSize: s(12),
     color: brand.claySoft,
   },
