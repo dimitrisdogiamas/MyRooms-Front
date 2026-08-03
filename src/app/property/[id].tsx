@@ -1,6 +1,7 @@
 import { Booking, BookingsList } from "@/components/BookingsList";
 import { RoomPlate } from "@/components/RoomPlate";
 import RoomsSelector, { Room } from "@/components/RoomsSelector";
+import { YearOverviewModal } from "@/components/YearOverviewModal";
 import { Fonts, type BrandColors } from "@/constants/theme";
 import { addDays } from "@/lib/bookingInsights";
 import { getBookingIncome,
@@ -27,6 +28,8 @@ import { Alert,
 } from "react-native";
 import { Calendar } from "react-native-calendars";
 import { SafeAreaView } from "react-native-safe-area-context";
+import type { YearOverview } from "@/lib/yearOverview";
+import { getYearOverview } from "@/lib/yearOverview";
 
 type DayMarkKind = "stay" | "departure" | "split" | "selected";
 
@@ -149,6 +152,9 @@ export default function PropertyScreen() {
   const [notifyArrival, setNotifyArrival] = useState(true);
   const [notifyDeparture, setNotifyDeparture] = useState(true);
   const [savingBooking, setSavingBooking] = useState(false);
+  const [bookingRoomId, setBookingRoomId] = useState<string | null>(null);
+  const [yearOverview, setYearOverview] = useState<YearOverview | null>(null);
+  const overviewYear = new Date().getFullYear();
 
   const { settings } = useSettings();
   const brand = useBrand();
@@ -200,7 +206,7 @@ export default function PropertyScreen() {
     const [bookingsRes, pricesRes] = await Promise.all([
       supabase
         .from("bookings")
-        .select("id, room_id, start_date, end_date, departure_note")
+        .select("id, room_id, start_date, end_date, departure_note, guest_name")
         .in("room_id", roomIds)
         .order("start_date", { ascending: true }),
       supabase
@@ -548,7 +554,24 @@ export default function PropertyScreen() {
   return (
     <View style={styles.root}>
       <Stack.Screen
-        options={{ title: propertyName, headerTintColor: brand.primary }}
+        options={{
+          title: propertyName,
+          headerTitleAlign: "center",
+          headerTintColor: brand.primary,
+          headerRight: () => (
+            <Pressable
+              onPress={() =>
+                setYearOverview(
+                  getYearOverview(bookings, rooms, roomPrices, overviewYear),
+                )
+              }
+            >
+              <Text style={{ color: brand.primary, fontWeight: "700" }}>
+                {overviewYear}
+              </Text>
+            </Pressable>
+          ),
+        }}
       />
       <ImageBackground
         source={require("@/assets/images/licensed-image.jpg")}
@@ -588,6 +611,14 @@ export default function PropertyScreen() {
                 return (
                   <View key={room.id} style={styles.panel}>
                     <View style={styles.roomHeader}>
+                      <Pressable
+                        style={styles.deleteRoomButton}
+                        onPress={() => deleteRoom(room)}
+                      >
+                        <Text style={styles.deleteRoomButtonText}>
+                          🗑️
+                        </Text>
+                      </Pressable>
                       <Text style={styles.roomHeaderTitle} numberOfLines={1}>
                         {room.name}
                       </Text>
@@ -595,16 +626,9 @@ export default function PropertyScreen() {
                         style={styles.pricesButton}
                         onPress={() => openPrices(room)}
                       >
-                        <Text style={styles.pricesButtonText}>💵 Τιμές</Text>
+                        <Text style={styles.pricesButtonText}>💵</Text>
                       </Pressable>
-                      <Pressable
-                        style={styles.deleteRoomButton}
-                        onPress={() => deleteRoom(room)}
-                      >
-                        <Text style={styles.deleteRoomButtonText}>
-                          Διαγραφή
-                        </Text>
-                      </Pressable>
+
                     </View>
                     <Text style={styles.hint}>
                       {start
@@ -751,6 +775,17 @@ export default function PropertyScreen() {
                     <Text style={styles.incomeText}>
                       Σύνολο εσόδων δωματίου:{`${getRoomIncome(bookings, roomPrices, room.id).toFixed(2)}€`}
                     </Text>
+
+                    <View style={styles.bookingsList}>
+                      <Pressable
+                        onPress={() => setBookingRoomId(room.id)}
+                        style={styles.bookingsButton}
+                      >
+                        <Text style={styles.bookingListTitle}>
+                          Κρατήσεις ({roomBookings.length})
+                        </Text>
+                      </Pressable>
+                    </View>
                   </View>
                 );
               })
@@ -758,6 +793,44 @@ export default function PropertyScreen() {
           </ScrollView>
         </SafeAreaView>
       </ImageBackground>
+
+      <YearOverviewModal
+        visible={yearOverview !== null}
+        overview={yearOverview}
+        propertyName={propertyName}
+        onClose={() => setYearOverview(null)}
+      />
+
+      <Modal
+        visible={bookingRoomId !== null}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setBookingRoomId(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalPanel}>
+            <Text style={styles.bookingListTitle}>
+              Κρατήσεις —{" "}
+              {rooms.find((r) => r.id === bookingRoomId)?.name ?? ""} (
+              {bookings.filter((b) => b.room_id === bookingRoomId).length})
+            </Text>
+            <BookingsList
+              bookings={bookings.filter((b) => b.room_id === bookingRoomId)}
+              rooms={rooms}
+              roomPrices={roomPrices}
+              loading={loading}
+              onCancelled={fetchPropertyData}
+            />
+            <Pressable
+              style={styles.modalCancel}
+              onPress={() => setBookingRoomId(null)}
+            >
+              <Text style={styles.modalCancelText}>Κλείσιμο</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
       <Modal visible={noteBooking !== null} animationType="fade" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalPanel}>
@@ -1071,48 +1144,12 @@ function createStyles(scale: number, brand: BrandColors) {
     paddingBottom: 48,
     gap: 14,
   },
-  hero: {
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    marginBottom: 4,
-  },
-  heroEyebrow: {
-    color: brand.primary,
-    fontSize: s(13),
-    fontWeight: "600",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-    marginBottom: 6,
-  },
-  heroTitle: {
-    color: brand.white,
-    fontSize: s(32),
-    fontWeight: "800",
-    marginBottom: 6,
-  },
-  heroSubtitle: {
-    color: "rgba(255,255,255,0.85)",
-    fontSize: s(15),
-  },
   panel: {
     backgroundColor: brand.sand,
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
     borderColor: brand.sandDeep,
-  },
-  legendPanel: {
-    backgroundColor: "rgba(247, 241, 234, 0.9)",
-    borderRadius: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-  },
-  panelTitle: {
-    fontSize: s(17),
-    fontWeight: "700",
-    color: brand.ink,
-    marginBottom: 0,
-    flex: 1,
   },
   roomHeader: {
     flexDirection: "row",
@@ -1130,6 +1167,7 @@ function createStyles(scale: number, brand: BrandColors) {
   roomHeaderTitle: {
     flex: 1,
     flexShrink: 1,
+    textAlign: "center",
     color: brand.white,
     fontSize: s(16),
     fontWeight: "700",
@@ -1499,10 +1537,28 @@ function createStyles(scale: number, brand: BrandColors) {
     borderRadius: 20,
     paddingHorizontal: 18,
     paddingVertical: 10,
-  },
+    },
+    bookingsButton: {
+      alignItems: "center",
+      textAlign: "center",
+      backgroundColor: brand.primary,
+      borderRadius: 20,
+      paddingHorizontal: 18,
+      paddingVertical: 10,
+    },
+
   bookingSaveText: {
     color: brand.white,
     fontWeight: "700",
+  },
+  bookingsList: {
+    marginTop: 12,
+  },
+  bookingListTitle: {
+    fontSize: s(15),
+    fontWeight: "700",
+    color: brand.ink,
+    marginBottom: 6,
   },
 });
 }
