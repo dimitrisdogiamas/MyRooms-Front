@@ -1,6 +1,7 @@
 import { Booking, BookingsList } from "@/components/BookingsList";
 import { RoomPlate } from "@/components/RoomPlate";
 import RoomsSelector, { Room } from "@/components/RoomsSelector";
+import { YearOverviewModal } from "@/components/YearOverviewModal";
 import { Fonts, type BrandColors } from "@/constants/theme";
 import { addDays } from "@/lib/bookingInsights";
 import { getBookingIncome,
@@ -27,6 +28,8 @@ import { Alert,
 } from "react-native";
 import { Calendar } from "react-native-calendars";
 import { SafeAreaView } from "react-native-safe-area-context";
+import type { YearOverview } from "@/lib/yearOverview";
+import { getYearOverview } from "@/lib/yearOverview";
 
 type DayMarkKind = "stay" | "departure" | "split" | "selected";
 
@@ -150,6 +153,8 @@ export default function PropertyScreen() {
   const [notifyDeparture, setNotifyDeparture] = useState(true);
   const [savingBooking, setSavingBooking] = useState(false);
   const [bookingRoomId, setBookingRoomId] = useState<string | null>(null);
+  const [yearOverview, setYearOverview] = useState<YearOverview | null>(null);
+  const overviewYear = new Date().getFullYear();
 
   const { settings } = useSettings();
   const brand = useBrand();
@@ -554,12 +559,18 @@ export default function PropertyScreen() {
           headerTitleAlign: "center",
           headerTintColor: brand.primary,
           headerRight: () => (
-            <Pressable onPress={() => (
-              
-            )}>
-              <Text>2026</Text>
-              </Pressable>
-            ),
+            <Pressable
+              onPress={() =>
+                setYearOverview(
+                  getYearOverview(bookings, rooms, roomPrices, overviewYear),
+                )
+              }
+            >
+              <Text style={{ color: brand.primary, fontWeight: "700" }}>
+                {overviewYear}
+              </Text>
+            </Pressable>
+          ),
         }}
       />
       <ImageBackground
@@ -782,6 +793,13 @@ export default function PropertyScreen() {
           </ScrollView>
         </SafeAreaView>
       </ImageBackground>
+
+      <YearOverviewModal
+        visible={yearOverview !== null}
+        overview={yearOverview}
+        propertyName={propertyName}
+        onClose={() => setYearOverview(null)}
+      />
 
       <Modal
         visible={bookingRoomId !== null}
