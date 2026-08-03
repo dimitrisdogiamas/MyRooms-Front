@@ -1,32 +1,92 @@
-// Follow this setup guide to integrate the Deno language server with your editor:
-// https://deno.land/manual/getting_started/setup_your_environment
-// This enables autocomplete, go to definition, etc.
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// Setup type definitions for built-in Supabase Runtime APIs
-import "@supabase/functions-js/edge-runtime.d.ts"
+Deno.serve(async () => {
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
 
-console.log("Hello from Functions!")
+  const { data: rooms, error: roomsError } = await supabase
+    .from("rooms")
+    .select("id, name");
 
-Deno.serve(async (req) => {
-  const { name } = await req.json()
-  const data = {
-    message: `Hello ${name}!`,
+  const { data: bookings, error: bookingsError } = await supabase
+    .from("bookings")
+    .select("id, room_id, start_date, end_date, departure_note");
+
+  const { data: tokens, error: tokensError } = await supabase
+    .from("push_tokens")
+    .select("token");
+
+  if (roomsError || bookingsError || tokensError) {
+    return new Response(
+      JSON.stringify({ roomsError, bookingsError, tokensError }),
+      { status: 500, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  if (!rooms?.length) {
+    return new Response("No rooms");
+  }
+  if (!tokens?.length) {
+    return new Response("No push tokens");
+  }
+
+  // Europe/Athens calendar date (not UTC)
+  const today = new Date().toLocaleDateString("en-CA", {
+    timeZone: "Europe/Athens",
+  });
+
+  const messages: string[] = [];
+  const bookingRows = bookings ?? [];
+
+  for (const room of rooms) {
+    const sorted = bookingRows
+      .filter((b) => b.room_id === room.id)
+      .sort((a, b) => a.start_date.localeCompare(b.start_date));
+
+    for (let i = 0; i < sorted.length - 1; i++) {
+      if (
+        sorted[i].end_date === sorted[i + 1].start_date &&
+        sorted[i].end_date === today
+      ) {
+        messages.push(`Αλλαγή σήμερα: ${room.name}`);
+      }
+    }
+
+    for (const b of sorted) {
+      if (
+        b.departure_note?.includes("Αλλαγή σεντονιών") &&
+        b.end_date === today
+      ) {
+        messages.push(`Σεντόνια σήμερα: ${room.name}`);
+      }
+    }
+  }
+
+  if (messages.length === 0) {
+    return new Response("No alerts today");
+  }
+
+  const body = tokens.map((t) => ({
+    to: t.token,
+    title: "Mel&Dim",
+    body: messages.join("\n"),
+    sound: "default",
+  }));
+
+  const pushRes = await fetch("https://exp.host/--/api/v2/push/send", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!pushRes.ok) {
+    const errText = await pushRes.text();
+    return new Response(`Push failed: ${errText}`, { status: 502 });
   }
 
   return new Response(
-    JSON.stringify(data),
-    { headers: { "Content-Type": "application/json" } },
-  )
-})
-
-/* To invoke locally:
-
-  1. Run `supabase start` (see: https://supabase.com/docs/reference/cli/supabase-start)
-  2. Make an HTTP request:
-
-  curl -i --location --request POST 'http://127.0.0.1:54321/functions/v1/daily-alerts' \
-    --header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0' \
-    --header 'Content-Type: application/json' \
-    --data '{"name":"Functions"}'
-
-*/
+    `Sent ${messages.length} alerts to ${tokens.length} devices`,
+  );
+});

@@ -43,3 +43,6 @@ example
 /android
 
 .env
+
+*-firebase-adminsdk-*.json
+service-account*.json
