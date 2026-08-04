@@ -4,7 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { AnimatedSplashOverlay } from "@/components/animated-icon";
 import { SettingsProvider } from "@/context/SettingsProvider";
 import { useResolvedScheme } from "@/hooks/use-resolved-scheme";
-// import { registerForPushNotifications } from "@/lib/notification";
+import { registerForPushNotifications } from "@/lib/notification";
 import { useEffect } from "react";
 
 SplashScreen.preventAutoHideAsync();
@@ -41,7 +41,7 @@ function RootLayoutNav() {
 
 export default function TabLayout() {
   useEffect(() => {
-    // void registerForPushNotifications();
+    void registerForPushNotifications();
   }, []);
 
   return (
