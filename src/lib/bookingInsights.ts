@@ -52,7 +52,7 @@ export function addDays(iso: string, days: number): string {
 }
 
 
- function nightsBetween(from: string, to: string): number {
+export function nightsBetween(from: string, to: string): number {
   const fromDate = new Date(from + 'T12:00:00');
   const toDate = new Date(to + 'T12:00:00');
   return Math.round((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
