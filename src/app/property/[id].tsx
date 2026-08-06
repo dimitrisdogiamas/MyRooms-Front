@@ -1,22 +1,26 @@
 import { Booking, BookingsList } from "@/components/BookingsList";
+import { PropertyOverviewModal } from "@/components/PropertyOverviewModal";
 import { RoomPlate } from "@/components/RoomPlate";
 import RoomsSelector, { Room } from "@/components/RoomsSelector";
 import { YearOverviewModal } from "@/components/YearOverviewModal";
 import { Fonts, type BrandColors } from "@/constants/theme";
+import { useSettings } from "@/context/SettingsProvider";
+import { useBrand } from "@/hooks/use-brand";
 import { addDays } from "@/lib/bookingInsights";
-import { getBookingIncome,
+import {
+  getBookingIncome,
   getPriceForNight,
   getRoomIncome,
   type RoomPricing,
 } from "@/lib/roomPricing";
 import { supabase } from "@/lib/supabase";
 import { fs } from "@/lib/typography";
-import { useSettings } from "@/context/SettingsProvider";
-import { useBrand } from "@/hooks/use-brand";
+import type { YearOverview } from "@/lib/yearOverview";
+import { getYearOverview } from "@/lib/yearOverview";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert,
-  ImageBackground,
+import {
+  Alert,
   Modal,
   Platform,
   Pressable,
@@ -28,8 +32,6 @@ import { Alert,
 } from "react-native";
 import { Calendar } from "react-native-calendars";
 import { SafeAreaView } from "react-native-safe-area-context";
-import type { YearOverview } from "@/lib/yearOverview";
-import { getYearOverview } from "@/lib/yearOverview";
 
 type DayMarkKind = "stay" | "departure" | "split" | "selected";
 
@@ -154,6 +156,7 @@ export default function PropertyScreen() {
   const [savingBooking, setSavingBooking] = useState(false);
   const [bookingRoomId, setBookingRoomId] = useState<string | null>(null);
   const [yearOverview, setYearOverview] = useState<YearOverview | null>(null);
+  const [propertyYear, setPropertyYear] = useState(false);
   const overviewYear = new Date().getFullYear();
 
   const { settings } = useSettings();
@@ -269,7 +272,10 @@ export default function PropertyScreen() {
 
   async function handleDayLongPress(room: Room, dateString: string) {
     const booking = bookings.find(
-      (b) => b.room_id === room.id && b.start_date <= dateString && b.end_date >= dateString,
+      (b) =>
+        b.room_id === room.id &&
+        b.start_date <= dateString &&
+        b.end_date >= dateString,
     );
     if (!booking) {
       alert("Δεν υπάρχει κράτηση αυτή τη μέρα.");
@@ -555,7 +561,13 @@ export default function PropertyScreen() {
     <View style={styles.root}>
       <Stack.Screen
         options={{
-          title: propertyName,
+          headerTitle: () => (
+            <Pressable onPress={() => setPropertyYear(true)}>
+              <Text style={{ color: brand.primary, fontWeight: "700" }}>
+                {propertyName}
+              </Text>
+            </Pressable>
+          ),
           headerTitleAlign: "center",
           headerTintColor: brand.primary,
           headerRight: () => (
@@ -578,220 +590,211 @@ export default function PropertyScreen() {
         style={styles.backgroundImage}
         resizeMode="cover"
       > */}
-        <View style={styles.dim} />
-        <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
-          <ScrollView
-            contentContainerStyle={styles.content}
-            keyboardShouldPersistTaps="handled"
-          >
+      <View style={styles.dim} />
+      <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+        >
+          <RoomsSelector
+            key={refreshKey}
+            propertyId={propertyId}
+            selectedRoom={selectedRoom}
+            onSelectRoom={setSelectedRoom}
+            onRoomsChanged={fetchPropertyData}
+          />
 
+          {rooms.length === 0 ? (
+            <View style={styles.panel}>
+              <Text style={styles.hint}>
+                Πρόσθεσε ένα δωμάτιο για να εμφανιστεί το ημερολόγιό του.
+              </Text>
+            </View>
+          ) : (
+            rooms.map((room) => {
+              const start = selectStartByRoom[room.id] ?? null;
+              const roomBookings = bookings.filter(
+                (b) => b.room_id === room.id,
+              );
 
-
-              <RoomsSelector
-                  key={refreshKey}
-                propertyId={propertyId}
-                selectedRoom={selectedRoom}
-                onSelectRoom={setSelectedRoom}
-                onRoomsChanged={fetchPropertyData}
-              />
-
-            {rooms.length === 0 ? (
-              <View style={styles.panel}>
-                <Text style={styles.hint}>
-                  Πρόσθεσε ένα δωμάτιο για να εμφανιστεί το ημερολόγιό του.
-                </Text>
-              </View>
-            ) : (
-              rooms.map((room) => {
-                const start = selectStartByRoom[room.id] ?? null;
-                const roomBookings = bookings.filter(
-                  (b) => b.room_id === room.id,
-                );
-
-                return (
-                  <View key={room.id} style={styles.panel}>
-                    <View style={styles.roomHeader}>
-                      <Pressable
-                        style={styles.deleteRoomButton}
-                        onPress={() => deleteRoom(room)}
-                      >
-                        <Text style={styles.deleteRoomButtonText}>
-                          🗑️
-                        </Text>
-                      </Pressable>
-                      <Text style={styles.roomHeaderTitle} numberOfLines={1}>
-                        {room.name}
-                      </Text>
-                      <Pressable
-                        style={styles.pricesButton}
-                        onPress={() => openPrices(room)}
-                      >
-                        <Text style={styles.pricesButtonText}>💵</Text>
-                      </Pressable>
-
-                    </View>
-                    <Text style={styles.hint}>
-                      {start
-                        ? `Έναρξη: ${start} — πάτα ημερομηνία λήξης (min 5 μέρες)`
-                        : "Πάτα ημερομηνία έναρξης, μετά ημερομηνία λήξης"}
+              return (
+                <View key={room.id} style={styles.panel}>
+                  <View style={styles.roomHeader}>
+                    <Pressable
+                      style={styles.deleteRoomButton}
+                      onPress={() => deleteRoom(room)}
+                    >
+                      <Text style={styles.deleteRoomButtonText}>🗑️</Text>
+                    </Pressable>
+                    <Text style={styles.roomHeaderTitle} numberOfLines={1}>
+                      {room.name}
                     </Text>
+                    <Pressable
+                      style={styles.pricesButton}
+                      onPress={() => openPrices(room)}
+                    >
+                      <Text style={styles.pricesButtonText}>💵</Text>
+                    </Pressable>
+                  </View>
+                  <Text style={styles.hint}>
+                    {start
+                      ? `Έναρξη: ${start} — πάτα ημερομηνία λήξης (min 5 μέρες)`
+                      : "Πάτα ημερομηνία έναρξης, μετά ημερομηνία λήξης"}
+                  </Text>
 
-                    <Calendar
-                      markingType="period"
-                      style={styles.calendar}
-                      theme={{
-                        ...calendarTheme,
-                        stylesheet: {
-                          calendar: {
-                            main: {
-                              week: {
-                                marginTop: 0,
-                                marginBottom: 0,
-                                paddingVertical: 0,
-                                flexDirection: "row",
-                                justifyContent: "space-around",
-                              },
+                  <Calendar
+                    markingType="period"
+                    style={styles.calendar}
+                    theme={{
+                      ...calendarTheme,
+                      stylesheet: {
+                        calendar: {
+                          main: {
+                            week: {
+                              marginTop: 0,
+                              marginBottom: 0,
+                              paddingVertical: 0,
+                              flexDirection: "row",
+                              justifyContent: "space-around",
                             },
                           },
                         },
-                      }}
-                      enableSwipeMonths
-                      hideExtraDays={false}
-                      showSixWeeks
-                      firstDay={1}
-                      markedDates={markedDatesForRoom(room.id)}
-                      dayComponent={({ date, state, marking }) => {
-                        if (!date) {
-                          return <View style={styles.dayCell} />;
-                        }
+                      },
+                    }}
+                    enableSwipeMonths
+                    hideExtraDays={false}
+                    showSixWeeks
+                    firstDay={1}
+                    markedDates={markedDatesForRoom(room.id)}
+                    dayComponent={({ date, state, marking }) => {
+                      if (!date) {
+                        return <View style={styles.dayCell} />;
+                      }
 
-                        const mark = marking as
-                          | RoomAvailability[string]
-                          | undefined;
-                        const price = getPriceForNight(
-                          roomPrices,
-                          room.id,
-                          date.dateString,
-                        );
-                        const isOutsideMonth =
-                          state === "disabled" || state === "inactive";
-                        const kind = mark?.kind;
-                        const isSplit = kind === "split";
-                        const bg =
-                          !isSplit && typeof mark?.color === "string"
-                            ? mark.color
-                            : undefined;
-                        const onColored = Boolean(bg) || isSplit;
-                        const textColor = onColored
-                          ? brand.white
-                          : isOutsideMonth
-                            ? brand.claySoft
-                            : state === "today"
-                              ? brand.primary
-                              : brand.ink;
+                      const mark = marking as
+                        | RoomAvailability[string]
+                        | undefined;
+                      const price = getPriceForNight(
+                        roomPrices,
+                        room.id,
+                        date.dateString,
+                      );
+                      const isOutsideMonth =
+                        state === "disabled" || state === "inactive";
+                      const kind = mark?.kind;
+                      const isSplit = kind === "split";
+                      const bg =
+                        !isSplit && typeof mark?.color === "string"
+                          ? mark.color
+                          : undefined;
+                      const onColored = Boolean(bg) || isSplit;
+                      const textColor = onColored
+                        ? brand.white
+                        : isOutsideMonth
+                          ? brand.claySoft
+                          : state === "today"
+                            ? brand.primary
+                            : brand.ink;
 
-                        return (
-                          <Pressable
-                            style={[
-                              styles.dayCell,
-                              !onColored && styles.dayCellIdle,
-                              bg ? { backgroundColor: bg } : null,
-                              mark?.selected && styles.dayCellSelected,
-                              isOutsideMonth &&
-                                !onColored &&
-                                styles.dayCellOutside,
-                            ]}
-                            onPress={() =>
-                              handleDayPress(room, date.dateString)
-                            }
-                            onLongPress={() =>
-                              handleDayLongPress(room, date.dateString)
-                            }
-                          >
-                            {isSplit ? (
-                              <>
-                                <View
-                                  style={[
-                                    StyleSheet.absoluteFill,
-                                    { backgroundColor: brand.calendarBlue },
-                                  ]}
-                                />
-                                <View style={styles.daySplitTriangle} />
-                              </>
-                            ) : null}
-                            <Text
-                              style={[styles.dayNumber, { color: textColor }]}
-                            >
-                              {date.day}
-                            </Text>
-                            <Text
-                              style={[
-                                styles.dayPrice,
-                                {
-                                  color: onColored
-                                    ? brand.white
-                                    : brand.claySoft,
-                                },
-                              ]}
-                            >
-                              {price > 0 ? `${price}€` : " "}
-                            </Text>
-                          </Pressable>
-                        );
-                      }}
-                    />
-
-                    <View style={styles.legend}>
-                      <View style={styles.legendItem}>
-                        <View
+                      return (
+                        <Pressable
                           style={[
-                            styles.dot,
-                            { backgroundColor: brand.calendarBlue },
+                            styles.dayCell,
+                            !onColored && styles.dayCellIdle,
+                            bg ? { backgroundColor: bg } : null,
+                            mark?.selected && styles.dayCellSelected,
+                            isOutsideMonth &&
+                              !onColored &&
+                              styles.dayCellOutside,
                           ]}
-                        />
-                        <Text style={styles.legendText}>Διαμονή</Text>
-                      </View>
-                      <View style={styles.legendItem}>
-                        <View style={styles.dotSplit}>
-                          <View style={styles.dotSplitSand} />
-                          <View style={styles.dotSplitOrange} />
-                        </View>
-                        <Text style={styles.legendText}>Αναχώρηση</Text>
-                      </View>
-                      <View style={styles.legendItem}>
-                        <View style={styles.dotSplit}>
-                          <View style={styles.dotSplitTeal} />
-                          <View style={styles.dotSplitOrange} />
-                        </View>
-                        <Text style={styles.legendText}>Αναχώρηση & άφιξη</Text>
-                      </View>
+                          onPress={() => handleDayPress(room, date.dateString)}
+                          onLongPress={() =>
+                            handleDayLongPress(room, date.dateString)
+                          }
+                        >
+                          {isSplit ? (
+                            <>
+                              <View
+                                style={[
+                                  StyleSheet.absoluteFill,
+                                  { backgroundColor: brand.calendarBlue },
+                                ]}
+                              />
+                              <View style={styles.daySplitTriangle} />
+                            </>
+                          ) : null}
+                          <Text
+                            style={[styles.dayNumber, { color: textColor }]}
+                          >
+                            {date.day}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.dayPrice,
+                              {
+                                color: onColored ? brand.white : brand.claySoft,
+                              },
+                            ]}
+                          >
+                            {price > 0 ? `${price}€` : " "}
+                          </Text>
+                        </Pressable>
+                      );
+                    }}
+                  />
+
+                  <View style={styles.legend}>
+                    <View style={styles.legendItem}>
+                      <View
+                        style={[
+                          styles.dot,
+                          { backgroundColor: brand.calendarBlue },
+                        ]}
+                      />
+                      <Text style={styles.legendText}>Διαμονή</Text>
                     </View>
-
-                    <Text style={styles.hint}>
-                      Κρατήστε πατημένο σε μια ημερομηνία για σημείωση
-                      (αλλαγή σεντονιών / πρόωρη αναχώρηση).
-                    </Text>
-
-                    <Text style={styles.incomeText}>
-                      Σύνολο εσόδων δωματίου:{`${getRoomIncome(bookings, roomPrices, room.id).toFixed(2)}€`}
-                    </Text>
-
-                    <View style={styles.bookingsList}>
-                      <Pressable
-                        onPress={() => setBookingRoomId(room.id)}
-                        style={styles.bookingsButton}
-                      >
-                        <Text style={styles.bookingListTitle}>
-                          Κρατήσεις ({roomBookings.length})
-                        </Text>
-                      </Pressable>
+                    <View style={styles.legendItem}>
+                      <View style={styles.dotSplit}>
+                        <View style={styles.dotSplitSand} />
+                        <View style={styles.dotSplitOrange} />
+                      </View>
+                      <Text style={styles.legendText}>Αναχώρηση</Text>
+                    </View>
+                    <View style={styles.legendItem}>
+                      <View style={styles.dotSplit}>
+                        <View style={styles.dotSplitTeal} />
+                        <View style={styles.dotSplitOrange} />
+                      </View>
+                      <Text style={styles.legendText}>Αναχώρηση & άφιξη</Text>
                     </View>
                   </View>
-                );
-              })
-            )}
-          </ScrollView>
-        </SafeAreaView>
+
+                  <Text style={styles.hint}>
+                    Κρατήστε πατημένο σε μια ημερομηνία για σημείωση (αλλαγή
+                    σεντονιών / πρόωρη αναχώρηση).
+                  </Text>
+
+                  <Text style={styles.incomeText}>
+                    Σύνολο εσόδων δωματίου:
+                    {`${getRoomIncome(bookings, roomPrices, room.id).toFixed(2)}€`}
+                  </Text>
+
+                  <View style={styles.bookingsList}>
+                    <Pressable
+                      onPress={() => setBookingRoomId(room.id)}
+                      style={styles.bookingsButton}
+                    >
+                      <Text style={styles.bookingListTitle}>
+                        Κρατήσεις ({roomBookings.length})
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
+              );
+            })
+          )}
+        </ScrollView>
+      </SafeAreaView>
       {/* </ImageBackground> */}
 
       <YearOverviewModal
@@ -799,6 +802,15 @@ export default function PropertyScreen() {
         overview={yearOverview}
         propertyName={propertyName}
         onClose={() => setYearOverview(null)}
+      />
+
+      <PropertyOverviewModal
+        visible={propertyYear}
+        propertyName={propertyName}
+        bookings={bookings}
+        rooms={rooms}
+        roomPrices={roomPrices}
+        onClose={() => setPropertyYear(false)}
       />
 
       <Modal
@@ -1125,418 +1137,418 @@ export default function PropertyScreen() {
 function createStyles(scale: number, brand: BrandColors) {
   const s = (n: number) => fs(n, scale);
   return StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: brand.ink,
-  },
-  backgroundImage: {
-    flex: 1,
-  },
-  dim: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(44, 36, 28, 0.45)",
-  },
-  safe: {
-    flex: 1,
-  },
-  content: {
-    padding: 16,
-    paddingBottom: 48,
-    gap: 14,
-  },
-  panel: {
-    backgroundColor: brand.sand,
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: brand.sandDeep,
-  },
-  roomHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: brand.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderTopLeftRadius: 14,
-    borderTopRightRadius: 14,
-    marginHorizontal: -16,
-    marginTop: -16,
-    marginBottom: 6,
-  },
-  roomHeaderTitle: {
-    flex: 1,
-    flexShrink: 1,
-    textAlign: "center",
-    color: brand.white,
-    fontSize: s(16),
-    fontWeight: "700",
-  },
-  pricesButton: {
-    backgroundColor: brand.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: brand.white,
-  },
-  pricesButtonText: {
-    color: brand.white,
-    fontWeight: "700",
-    fontSize: s(13),
-  },
-  deleteRoomButton: {
-    backgroundColor: brand.danger,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-  },
-  deleteRoomButtonText: {
-    color: brand.white,
-    fontWeight: "700",
-    fontSize: s(13),
-  },
-  incomeText: {
-    marginTop: 12,
-    fontSize: s(14),
-    fontWeight: "600",
-    color: brand.ink,
-  },
-  bookingsTitle: {
-    fontSize: s(14),
-    fontWeight: "700",
-    color: brand.primary,
-    marginTop: 14,
-    marginBottom: 8,
-  },
-  hint: {
-    fontSize: s(12),
-    color: brand.claySoft,
-    marginBottom: 8,
-    marginTop: 4,
-    lineHeight: s(16),
-  },
-  legend: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-    marginTop: 6,
-    marginBottom: 2,
-  },
-  legendItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 3,
-  },
-  dotSplit: {
-    width: 10,
-    height: 10,
-    borderRadius: 3,
-    overflow: "hidden",
-  },
-  dotSplitTeal: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: brand.calendarBlue,
-  },
-  dotSplitSand: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: brand.sandDeep,
-  },
-  dotSplitOrange: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    width: 0,
-    height: 0,
-    borderTopWidth: 10,
-    borderRightWidth: 10,
-    borderTopColor: brand.calendarTurnover,
-    borderRightColor: "transparent",
-  },
-  legendText: {
-    fontSize: s(11),
-    color: brand.claySoft,
-  },
-  calendar: {
-    width: "100%",
-    borderRadius: 14,
-    overflow: "hidden",
-  },
+    root: {
+      flex: 1,
+      backgroundColor: brand.ink,
+    },
+    backgroundImage: {
+      flex: 1,
+    },
+    dim: {
+      ...StyleSheet.absoluteFill,
+      backgroundColor: "rgba(44, 36, 28, 0.45)",
+    },
+    safe: {
+      flex: 1,
+    },
+    content: {
+      padding: 16,
+      paddingBottom: 48,
+      gap: 14,
+    },
+    panel: {
+      backgroundColor: brand.sand,
+      borderRadius: 20,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: brand.sandDeep,
+    },
+    roomHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      backgroundColor: brand.primary,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderTopLeftRadius: 14,
+      borderTopRightRadius: 14,
+      marginHorizontal: -16,
+      marginTop: -16,
+      marginBottom: 6,
+    },
+    roomHeaderTitle: {
+      flex: 1,
+      flexShrink: 1,
+      textAlign: "center",
+      color: brand.white,
+      fontSize: s(16),
+      fontWeight: "700",
+    },
+    pricesButton: {
+      backgroundColor: brand.primary,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: brand.white,
+    },
+    pricesButtonText: {
+      color: brand.white,
+      fontWeight: "700",
+      fontSize: s(13),
+    },
+    deleteRoomButton: {
+      backgroundColor: brand.danger,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 10,
+    },
+    deleteRoomButtonText: {
+      color: brand.white,
+      fontWeight: "700",
+      fontSize: s(13),
+    },
+    incomeText: {
+      marginTop: 12,
+      fontSize: s(14),
+      fontWeight: "600",
+      color: brand.ink,
+    },
+    bookingsTitle: {
+      fontSize: s(14),
+      fontWeight: "700",
+      color: brand.primary,
+      marginTop: 14,
+      marginBottom: 8,
+    },
+    hint: {
+      fontSize: s(12),
+      color: brand.claySoft,
+      marginBottom: 8,
+      marginTop: 4,
+      lineHeight: s(16),
+    },
+    legend: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 12,
+      marginTop: 6,
+      marginBottom: 2,
+    },
+    legendItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+    },
+    dot: {
+      width: 10,
+      height: 10,
+      borderRadius: 3,
+    },
+    dotSplit: {
+      width: 10,
+      height: 10,
+      borderRadius: 3,
+      overflow: "hidden",
+    },
+    dotSplitTeal: {
+      ...StyleSheet.absoluteFill,
+      backgroundColor: brand.calendarBlue,
+    },
+    dotSplitSand: {
+      ...StyleSheet.absoluteFill,
+      backgroundColor: brand.sandDeep,
+    },
+    dotSplitOrange: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      width: 0,
+      height: 0,
+      borderTopWidth: 10,
+      borderRightWidth: 10,
+      borderTopColor: brand.calendarTurnover,
+      borderRightColor: "transparent",
+    },
+    legendText: {
+      fontSize: s(11),
+      color: brand.claySoft,
+    },
+    calendar: {
+      width: "100%",
+      borderRadius: 14,
+      overflow: "hidden",
+    },
 
-  // modal styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(44, 36, 28, 0.55)",
-    justifyContent: "center",
-    padding: 20,
-  },
-  modalPanel: {
-    backgroundColor: brand.white,
-    borderRadius: 24,
-    padding: 22,
-    gap: 12,
-  },
-  modalDate: {
-    fontSize: s(28),
-    fontWeight: "700",
-    color: brand.ink,
-  },
-  modalSubtitle: {
-    fontSize: s(15),
-    color: brand.claySoft,
-    marginBottom: 4,
-  },
-  optionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: brand.sand,
-    borderRadius: 14,
-    paddingVertical: 16,
-    paddingHorizontal: 14,
-    borderWidth: 2,
-    borderColor: "transparent",
-  },
-  optionRowActive: {
-    borderColor: brand.primary,
-    backgroundColor: brand.sandDeep,
-  },
-  optionEmoji: {
-    fontSize: s(22),
-  },
-  optionLabel: {
-    fontSize: s(16),
-    fontWeight: "600",
-    color: brand.ink,
-    flex: 1,
-  },
-  modalConfirm: {
-    marginTop: 4,
-    paddingVertical: 14,
-    borderRadius: 14,
-    backgroundColor: brand.primary,
-    alignItems: "center",
-  },
-  modalConfirmText: {
-    color: brand.white,
-    fontWeight: "700",
-    fontSize: s(16),
-  },
-  modalCancel: {
-    paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: brand.sandDeep,
-    alignItems: "center",
-    backgroundColor: brand.white,
-  },
-  modalCancelText: {
-    color: brand.ink,
-    fontWeight: "700",
-    fontSize: s(16),
-  },
-  priceRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: brand.sand,
-    borderRadius: 12,
-    padding: 10,
-  },
-  priceRowText: {
-    flex: 1,
-    fontSize: s(13),
-    color: brand.ink,
-    fontWeight: "600",
-  },
-  priceDelete: {
-    borderWidth: 1,
-    borderColor: brand.danger,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-  },
-  priceDeleteText: {
-    color: brand.danger,
-    fontWeight: "700",
-    fontSize: s(12),
-  },
-  priceSectionTitle: {
-    marginTop: 4,
-    fontSize: s(15),
-    fontWeight: "700",
-    color: brand.ink,
-  },
-  priceDateRow: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  priceDateField: {
-    flex: 1,
-    position: "relative",
-    justifyContent: "center",
-  },
-  priceInput: {
-    borderWidth: 1,
-    borderColor: brand.sandDeep,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    paddingRight: 36,
-    fontSize: s(14),
-    color: brand.ink,
-    backgroundColor: brand.sand,
-  },
-  priceCalendarBtn: {
-    position: "absolute",
-    right: 8,
-    height: "100%",
-    justifyContent: "center",
-  },
-  priceActions: {
-    flexDirection: "row",
-    gap: 8,
-    marginTop: 4,
-  },
-  priceActionBtn: {
-    flex: 1,
-    marginTop: 0,
-  },
-  dayCell: {
-    width: 32,
-    height: 32,
-    borderRadius: 5,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-    padding: 0,
-    marginVertical: 1,
-  },
-  dayCellIdle: {
-    backgroundColor: brand.sand,
-  },
-  dayCellOutside: {
-    opacity: 0.45,
-  },
-  dayCellSelected: {
-    borderWidth: 1.5,
-    borderColor: brand.ink,
-  },
-  daySplitTriangle: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    width: 0,
-    height: 0,
-    borderTopWidth: 32,
-    borderRightWidth: 32,
-    borderTopColor: brand.calendarTurnover,
-    borderRightColor: "transparent",
-  },
-  dayNumber: {
-    fontSize: s(10),
-    lineHeight: s(11),
-    fontWeight: "600",
-    zIndex: 1,
-  },
-  dayPrice: {
-    fontSize: s(6),
-    lineHeight: s(7),
-    marginTop: 0,
-    zIndex: 1,
-  },
-  bookingModalPanel: {
-    backgroundColor: brand.white,
-    borderRadius: 20,
-    padding: 22,
-    gap: 12,
-  },
-  bookingModalTitle: {
-    fontSize: s(24),
-    fontWeight: "700",
-    color: brand.ink,
-    fontFamily: Fonts?.serif,
-  },
-  bookingModalDates: {
-    fontSize: s(13),
-    color: brand.claySoft,
-    fontFamily: Fonts?.mono,
-  },
-  bookingModalCost: {
-    fontSize: s(15),
-    color: brand.ink,
-  },
-  bookingModalCostValue: {
-    fontWeight: "700",
-  },
-  bookingGuestInput: {
-    borderWidth: 1,
-    borderColor: brand.sandDeep,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: s(15),
-    color: brand.ink,
-    backgroundColor: brand.white,
-  },
-  checkboxRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 4,
-  },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    borderColor: brand.claySoft,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: brand.white,
-  },
-  checkboxChecked: {
-    backgroundColor: brand.calendarBlue,
-    borderColor: brand.calendarBlue,
-  },
-  checkboxTick: {
-    color: brand.white,
-    fontSize: s(14),
-    fontWeight: "700",
-  },
-  checkboxLabel: {
-    fontSize: s(14),
-    color: brand.ink,
-    flex: 1,
-  },
-  bookingModalActions: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    gap: 10,
-    marginTop: 8,
-  },
-  bookingCancelBtn: {
-    borderWidth: 1,
-    borderColor: brand.sandDeep,
-    borderRadius: 20,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    backgroundColor: brand.white,
-  },
-  bookingCancelText: {
-    color: brand.ink,
-    fontWeight: "600",
-  },
-  bookingSaveBtn: {
-    backgroundColor: brand.calendarBlue,
-    borderRadius: 20,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
+    // modal styles
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(44, 36, 28, 0.55)",
+      justifyContent: "center",
+      padding: 20,
+    },
+    modalPanel: {
+      backgroundColor: brand.white,
+      borderRadius: 24,
+      padding: 22,
+      gap: 12,
+    },
+    modalDate: {
+      fontSize: s(28),
+      fontWeight: "700",
+      color: brand.ink,
+    },
+    modalSubtitle: {
+      fontSize: s(15),
+      color: brand.claySoft,
+      marginBottom: 4,
+    },
+    optionRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      backgroundColor: brand.sand,
+      borderRadius: 14,
+      paddingVertical: 16,
+      paddingHorizontal: 14,
+      borderWidth: 2,
+      borderColor: "transparent",
+    },
+    optionRowActive: {
+      borderColor: brand.primary,
+      backgroundColor: brand.sandDeep,
+    },
+    optionEmoji: {
+      fontSize: s(22),
+    },
+    optionLabel: {
+      fontSize: s(16),
+      fontWeight: "600",
+      color: brand.ink,
+      flex: 1,
+    },
+    modalConfirm: {
+      marginTop: 4,
+      paddingVertical: 14,
+      borderRadius: 14,
+      backgroundColor: brand.primary,
+      alignItems: "center",
+    },
+    modalConfirmText: {
+      color: brand.white,
+      fontWeight: "700",
+      fontSize: s(16),
+    },
+    modalCancel: {
+      paddingVertical: 14,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: brand.sandDeep,
+      alignItems: "center",
+      backgroundColor: brand.white,
+    },
+    modalCancelText: {
+      color: brand.ink,
+      fontWeight: "700",
+      fontSize: s(16),
+    },
+    priceRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      backgroundColor: brand.sand,
+      borderRadius: 12,
+      padding: 10,
+    },
+    priceRowText: {
+      flex: 1,
+      fontSize: s(13),
+      color: brand.ink,
+      fontWeight: "600",
+    },
+    priceDelete: {
+      borderWidth: 1,
+      borderColor: brand.danger,
+      borderRadius: 8,
+      paddingHorizontal: 8,
+      paddingVertical: 6,
+    },
+    priceDeleteText: {
+      color: brand.danger,
+      fontWeight: "700",
+      fontSize: s(12),
+    },
+    priceSectionTitle: {
+      marginTop: 4,
+      fontSize: s(15),
+      fontWeight: "700",
+      color: brand.ink,
+    },
+    priceDateRow: {
+      flexDirection: "row",
+      gap: 8,
+    },
+    priceDateField: {
+      flex: 1,
+      position: "relative",
+      justifyContent: "center",
+    },
+    priceInput: {
+      borderWidth: 1,
+      borderColor: brand.sandDeep,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      paddingRight: 36,
+      fontSize: s(14),
+      color: brand.ink,
+      backgroundColor: brand.sand,
+    },
+    priceCalendarBtn: {
+      position: "absolute",
+      right: 8,
+      height: "100%",
+      justifyContent: "center",
+    },
+    priceActions: {
+      flexDirection: "row",
+      gap: 8,
+      marginTop: 4,
+    },
+    priceActionBtn: {
+      flex: 1,
+      marginTop: 0,
+    },
+    dayCell: {
+      width: 32,
+      height: 32,
+      borderRadius: 5,
+      alignItems: "center",
+      justifyContent: "center",
+      overflow: "hidden",
+      padding: 0,
+      marginVertical: 1,
+    },
+    dayCellIdle: {
+      backgroundColor: brand.sand,
+    },
+    dayCellOutside: {
+      opacity: 0.45,
+    },
+    dayCellSelected: {
+      borderWidth: 1.5,
+      borderColor: brand.ink,
+    },
+    daySplitTriangle: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      width: 0,
+      height: 0,
+      borderTopWidth: 32,
+      borderRightWidth: 32,
+      borderTopColor: brand.calendarTurnover,
+      borderRightColor: "transparent",
+    },
+    dayNumber: {
+      fontSize: s(10),
+      lineHeight: s(11),
+      fontWeight: "600",
+      zIndex: 1,
+    },
+    dayPrice: {
+      fontSize: s(6),
+      lineHeight: s(7),
+      marginTop: 0,
+      zIndex: 1,
+    },
+    bookingModalPanel: {
+      backgroundColor: brand.white,
+      borderRadius: 20,
+      padding: 22,
+      gap: 12,
+    },
+    bookingModalTitle: {
+      fontSize: s(24),
+      fontWeight: "700",
+      color: brand.ink,
+      fontFamily: Fonts?.serif,
+    },
+    bookingModalDates: {
+      fontSize: s(13),
+      color: brand.claySoft,
+      fontFamily: Fonts?.mono,
+    },
+    bookingModalCost: {
+      fontSize: s(15),
+      color: brand.ink,
+    },
+    bookingModalCostValue: {
+      fontWeight: "700",
+    },
+    bookingGuestInput: {
+      borderWidth: 1,
+      borderColor: brand.sandDeep,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      fontSize: s(15),
+      color: brand.ink,
+      backgroundColor: brand.white,
+    },
+    checkboxRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      paddingVertical: 4,
+    },
+    checkbox: {
+      width: 22,
+      height: 22,
+      borderRadius: 6,
+      borderWidth: 1.5,
+      borderColor: brand.claySoft,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: brand.white,
+    },
+    checkboxChecked: {
+      backgroundColor: brand.calendarBlue,
+      borderColor: brand.calendarBlue,
+    },
+    checkboxTick: {
+      color: brand.white,
+      fontSize: s(14),
+      fontWeight: "700",
+    },
+    checkboxLabel: {
+      fontSize: s(14),
+      color: brand.ink,
+      flex: 1,
+    },
+    bookingModalActions: {
+      flexDirection: "row",
+      justifyContent: "flex-end",
+      gap: 10,
+      marginTop: 8,
+    },
+    bookingCancelBtn: {
+      borderWidth: 1,
+      borderColor: brand.sandDeep,
+      borderRadius: 20,
+      paddingHorizontal: 18,
+      paddingVertical: 10,
+      backgroundColor: brand.white,
+    },
+    bookingCancelText: {
+      color: brand.ink,
+      fontWeight: "600",
+    },
+    bookingSaveBtn: {
+      backgroundColor: brand.calendarBlue,
+      borderRadius: 20,
+      paddingHorizontal: 18,
+      paddingVertical: 10,
     },
     bookingsButton: {
       alignItems: "center",
@@ -1547,19 +1559,18 @@ function createStyles(scale: number, brand: BrandColors) {
       paddingVertical: 10,
     },
 
-  bookingSaveText: {
-    color: brand.white,
-    fontWeight: "700",
-  },
-  bookingsList: {
-    marginTop: 12,
-  },
-  bookingListTitle: {
-    fontSize: s(15),
-    fontWeight: "700",
-    color: brand.ink,
-    marginBottom: 6,
-  },
-});
+    bookingSaveText: {
+      color: brand.white,
+      fontWeight: "700",
+    },
+    bookingsList: {
+      marginTop: 12,
+    },
+    bookingListTitle: {
+      fontSize: s(15),
+      fontWeight: "700",
+      color: brand.ink,
+      marginBottom: 6,
+    },
+  });
 }
-
