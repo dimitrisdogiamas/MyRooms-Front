@@ -573,11 +573,11 @@ export default function PropertyScreen() {
           ),
         }}
       />
-      <ImageBackground
+      {/* <ImageBackground
         source={require("@/assets/images/licensed-image.jpg")}
         style={styles.backgroundImage}
         resizeMode="cover"
-      >
+      > */}
         <View style={styles.dim} />
         <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
           <ScrollView
@@ -792,7 +792,7 @@ export default function PropertyScreen() {
             )}
           </ScrollView>
         </SafeAreaView>
-      </ImageBackground>
+      {/* </ImageBackground> */}
 
       <YearOverviewModal
         visible={yearOverview !== null}
