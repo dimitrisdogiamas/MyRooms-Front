@@ -555,7 +555,30 @@ export default function PropertyScreen() {
     <View style={styles.root}>
       <Stack.Screen
         options={{
-          title: propertyName,
+          headerTitle: () => (
+            <TextInput
+              value={propertyName}
+              onChangeText={setPropertyName}
+              style={{ color: brand.primary }}
+              onEndEditing={async () => {
+                const trimmed = propertyName.trim();
+                if (!trimmed) return;
+
+                const { error, data } = await supabase.from("properties")
+                  .update({name: propertyName,})
+                  .eq("id", propertyId)
+                  .select()
+                  .single();
+
+                  if (error) {
+                    console.error(error);
+                    Alert.alert("Σφάλμα", "Αποτυχία αποθήκευσης του ονόματος της ιδιοκτησίας: " + error.message);
+                  } else if (data?.name) {
+                    setPropertyName(data.name);
+                  }
+              }}
+              />
+          ),
           headerTitleAlign: "center",
           headerTintColor: brand.primary,
           headerRight: () => (
