@@ -323,13 +323,14 @@ const PropertiesList = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.homeHeader}>
         <View style={styles.eyebrowRow}>
-          <Text style={styles.homeEyebrow}>ΒΙΒΛΙΟ ΚΑΤΑΛΥΜΑΤΟΣ</Text>
           <Pressable
             style={styles.settingsButton}
             onPress={() => router.push("/settings")}
           >
             <Text style={styles.settingsButtonText}>⚙️</Text>
           </Pressable>
+          <Text style={styles.homeEyebrow}>ΒΙΒΛΙΟ ΚΑΤΑΛΥΜΑΤΟΣ</Text>
+          <View style={styles.eyebrowSpacer} />
         </View>
         <Text style={styles.homeTitle}>Διαχείριση ενοικιαζόμενων δωματίων</Text>
       </View>
@@ -572,14 +573,13 @@ function createStyles(scale: number, brand: BrandColors) {
     paddingTop: Spacing.one,
     backgroundColor: brand.sand,
   },
-  homeHeader: {
+    homeHeader: {
     marginBottom: Spacing.three,
     paddingHorizontal: 2,
   },
   eyebrowRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     marginBottom: 6,
   },
   homeEyebrow: {
@@ -588,6 +588,7 @@ function createStyles(scale: number, brand: BrandColors) {
     fontWeight: "700",
     letterSpacing: 1.2,
     color: brand.primary,
+    textAlign: "center",
   },
   homeTitle: {
     fontSize: s(28),
@@ -595,6 +596,7 @@ function createStyles(scale: number, brand: BrandColors) {
     color: brand.ink,
     fontFamily: Fonts?.serif,
     lineHeight: s(34),
+    textAlign: "center",
   },
   settingsButton: {
     paddingVertical: 6,
@@ -608,6 +610,9 @@ function createStyles(scale: number, brand: BrandColors) {
     color: brand.primary,
     fontWeight: "700",
     fontSize: s(14),
+  },
+  eyebrowSpacer: {
+    width: 44,
   },
   addRow: {
     flexDirection: "row",
