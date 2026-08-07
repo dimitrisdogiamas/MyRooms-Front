@@ -17,7 +17,7 @@ import { supabase } from "@/lib/supabase";
 import { fs } from "@/lib/typography";
 import type { YearOverview } from "@/lib/yearOverview";
 import { getYearOverview } from "@/lib/yearOverview";
-import { Stack, useLocalSearchParams } from "expo-router";
+import { Stack, useLocalSearchParams, router } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
@@ -29,6 +29,7 @@ import {
   Text,
   TextInput,
   View,
+  Dimensions,
 } from "react-native";
 import { Calendar } from "react-native-calendars";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -555,55 +556,101 @@ export default function PropertyScreen() {
     arrowColor: brand.primary,
     monthTextColor: brand.ink,
     textMonthFontWeight: "700" as const,
+    "stylesheet.calendar.main": {
+      container: {
+        paddingLeft: 0,
+        paddingRight: 0,
+        backgroundColor: brand.white,
+      },
+      week: {
+        flexDirection: "row" as const,
+        gap: 3,
+        marginTop: 0,
+        marginBottom: 3,
+      },
+      dayContainer: {
+        flex: 1,
+        alignItems: "center" as const,
+      },
+    },
+    "stylesheet.calendar.header": {
+      week: {
+        flexDirection: "row" as const,
+        gap: 3,
+        marginTop: 0,
+        marginBottom: 3,
+      },
+      dayHeader: {
+        flex: 1,
+        textAlign: "center" as const,
+        marginTop: 0,
+        marginBottom: 0,
+        fontSize: 13,
+        fontWeight: "400" as const,
+        color: brand.claySoft,
+      },
+    },
   };
 
   return (
     <View style={styles.root}>
-      <Stack.Screen
-        options={{
-          headerTitle: () => (
-            <Pressable onPress={() => setPropertyYear(true)}>
-              <Text style={{ color: brand.primary, fontWeight: "700" }}>
+      <Stack.Screen options={{ headerShown: false }} />
+
+      <SafeAreaView style={styles.safe} edges={["top", "bottom", "left", "right"]}>
+        <View style={styles.propertyHeader}>
+          <View style={styles.propertyHeaderTop}>
+            <Pressable
+              style={styles.headerTitleBtn}
+              onPress={() => setPropertyYear(true)}
+            >
+              <Text style={styles.headerTitleText} numberOfLines={1}>
                 {propertyName}
               </Text>
             </Pressable>
-          ),
-          headerTitleAlign: "center",
-          headerTintColor: brand.primary,
-          headerRight: () => (
+
             <Pressable
+              style={[styles.headerPill, styles.headerSide]}
+              onPress={() => router.back()}
+            >
+              <Text style={styles.headerPillText}>{"<"} Σπίτια</Text>
+            </Pressable>
+
+            <Pressable
+              style={[styles.headerPill, styles.headerSide]}
               onPress={() =>
                 setYearOverview(
                   getYearOverview(bookings, rooms, roomPrices, overviewYear),
                 )
               }
             >
-              <Text style={{ color: brand.primary, fontWeight: "700" }}>
-                {overviewYear}
-              </Text>
+              <Text style={styles.headerPillText}>{overviewYear}</Text>
             </Pressable>
-          ),
-        }}
-      />
-      {/* <ImageBackground
-        source={require("@/assets/images/licensed-image.jpg")}
-        style={styles.backgroundImage}
-        resizeMode="cover"
-      > */}
-      <View style={styles.dim} />
-      <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+          </View>
+
+          <View style={styles.propertyHeaderActions}>
+            <RoomsSelector
+              key={refreshKey}
+              propertyId={propertyId}
+              selectedRoom={selectedRoom}
+              onSelectRoom={setSelectedRoom}
+              onRoomsChanged={fetchPropertyData}
+              compact
+            />
+            <Pressable
+              style={styles.expensesBtn}
+              onPress={() =>
+                Alert.alert("Έξοδα", "Σύντομα διαθέσιμο.")
+              }
+            >
+              <Text style={styles.expensesBtnText}>Έξοδα</Text>
+            </Pressable>
+          </View>
+        </View>
+
         <ScrollView
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-          <RoomsSelector
-            key={refreshKey}
-            propertyId={propertyId}
-            selectedRoom={selectedRoom}
-            onSelectRoom={setSelectedRoom}
-            onRoomsChanged={fetchPropertyData}
-          />
-
           {rooms.length === 0 ? (
             <View style={styles.panel}>
               <Text style={styles.hint}>
@@ -645,22 +692,7 @@ export default function PropertyScreen() {
                   <Calendar
                     markingType="period"
                     style={styles.calendar}
-                    theme={{
-                      ...calendarTheme,
-                      stylesheet: {
-                        calendar: {
-                          main: {
-                            week: {
-                              marginTop: 0,
-                              marginBottom: 0,
-                              paddingVertical: 0,
-                              flexDirection: "row",
-                              justifyContent: "space-around",
-                            },
-                          },
-                        },
-                      },
-                    }}
+                    theme={calendarTheme}
                     enableSwipeMonths
                     hideExtraDays={false}
                     showSixWeeks
@@ -1136,10 +1168,17 @@ export default function PropertyScreen() {
 
 function createStyles(scale: number, brand: BrandColors) {
   const s = (n: number) => fs(n, scale);
+  const weekGap = 3;
+  const calendarWidthRatio = 0.96;
+  const contentPad = 32;
+  const calendarWidth =
+    (Dimensions.get("window").width - contentPad) * calendarWidthRatio;
+  const daySize = Math.floor((calendarWidth - weekGap * 6) / 7);
+
   return StyleSheet.create({
     root: {
       flex: 1,
-      backgroundColor: brand.ink,
+      backgroundColor: brand.sand,
     },
     backgroundImage: {
       flex: 1,
@@ -1150,6 +1189,75 @@ function createStyles(scale: number, brand: BrandColors) {
     },
     safe: {
       flex: 1,
+    },
+    propertyHeader: {
+      backgroundColor: "#16323A",
+      paddingVertical: 6,
+      paddingHorizontal: 18,
+      zIndex: 10,
+      gap: 10,
+    },
+    propertyHeaderTop: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      position: "relative",
+      minHeight: 36,
+    },
+    headerPill: {
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.35)",
+      borderRadius: 10,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+    },
+    headerSide: {
+      zIndex: 1,
+    },
+    headerPillText: {
+      color: "#f2ebe3",
+      fontWeight: "700",
+      fontSize: s(13),
+    },
+    headerTitleBtn: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 88,
+      zIndex: 0,
+    },
+    headerTitleText: {
+      color: "#ffffff",
+      fontWeight: "700",
+      fontSize: s(17),
+      textAlign: "center",
+    },
+    propertyHeaderActions: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    expensesBtn: {
+      flex: 1,
+      minWidth: 0,
+      backgroundColor: "rgba(217, 138, 61, 0.22)",
+      borderWidth: 1,
+      borderColor: "rgba(217, 138, 61, 0.5)",
+      borderRadius: 7,
+      paddingVertical: 4,
+      paddingHorizontal: 2,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    expensesBtnText: {
+      color: "#F1EFE6",
+      fontWeight: "600",
+      fontSize: 11.5,
+      lineHeight: 14,
     },
     content: {
       padding: 16,
@@ -1180,7 +1288,7 @@ function createStyles(scale: number, brand: BrandColors) {
       flex: 1,
       flexShrink: 1,
       textAlign: "center",
-      color: brand.white,
+      color: "#ffffff",
       fontSize: s(16),
       fontWeight: "700",
     },
@@ -1190,10 +1298,10 @@ function createStyles(scale: number, brand: BrandColors) {
       paddingVertical: 8,
       borderRadius: 10,
       borderWidth: 1,
-      borderColor: brand.white,
+      borderColor: "#ffffff",
     },
     pricesButtonText: {
-      color: brand.white,
+      color: "#ffffff",
       fontWeight: "700",
       fontSize: s(13),
     },
@@ -1204,7 +1312,7 @@ function createStyles(scale: number, brand: BrandColors) {
       borderRadius: 10,
     },
     deleteRoomButtonText: {
-      color: brand.white,
+      color: "#ffffff",
       fontWeight: "700",
       fontSize: s(13),
     },
@@ -1275,7 +1383,8 @@ function createStyles(scale: number, brand: BrandColors) {
       color: brand.claySoft,
     },
     calendar: {
-      width: "100%",
+      alignSelf: "center",
+      width: daySize * 7 + weekGap * 6,
       borderRadius: 14,
       overflow: "hidden",
     },
@@ -1420,14 +1529,14 @@ function createStyles(scale: number, brand: BrandColors) {
       marginTop: 0,
     },
     dayCell: {
-      width: 32,
-      height: 32,
+      width: daySize,
+      height: daySize,
       borderRadius: 5,
       alignItems: "center",
       justifyContent: "center",
       overflow: "hidden",
       padding: 0,
-      marginVertical: 1,
+      alignSelf: "center",
     },
     dayCellIdle: {
       backgroundColor: brand.sand,
@@ -1445,20 +1554,20 @@ function createStyles(scale: number, brand: BrandColors) {
       left: 0,
       width: 0,
       height: 0,
-      borderTopWidth: 32,
-      borderRightWidth: 32,
+      borderTopWidth: daySize,
+      borderRightWidth: daySize,
       borderTopColor: brand.calendarTurnover,
       borderRightColor: "transparent",
     },
     dayNumber: {
-      fontSize: s(10),
-      lineHeight: s(11),
+      fontSize: s(12),
+      lineHeight: s(14),
       fontWeight: "600",
       zIndex: 1,
     },
     dayPrice: {
-      fontSize: s(6),
-      lineHeight: s(7),
+      fontSize: s(8),
+      lineHeight: s(9),
       marginTop: 0,
       zIndex: 1,
     },
