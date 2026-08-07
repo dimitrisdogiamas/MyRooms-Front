@@ -29,6 +29,7 @@ import {
   Text,
   TextInput,
   View,
+  Dimensions,
 } from "react-native";
 import { Calendar } from "react-native-calendars";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -555,6 +556,40 @@ export default function PropertyScreen() {
     arrowColor: brand.primary,
     monthTextColor: brand.ink,
     textMonthFontWeight: "700" as const,
+    "stylesheet.calendar.main": {
+      container: {
+        paddingLeft: 0,
+        paddingRight: 0,
+        backgroundColor: brand.white,
+      },
+      week: {
+        flexDirection: "row" as const,
+        gap: 3,
+        marginTop: 0,
+        marginBottom: 3,
+      },
+      dayContainer: {
+        flex: 1,
+        alignItems: "center" as const,
+      },
+    },
+    "stylesheet.calendar.header": {
+      week: {
+        flexDirection: "row" as const,
+        gap: 3,
+        marginTop: 0,
+        marginBottom: 3,
+      },
+      dayHeader: {
+        flex: 1,
+        textAlign: "center" as const,
+        marginTop: 0,
+        marginBottom: 0,
+        fontSize: 13,
+        fontWeight: "400" as const,
+        color: brand.claySoft,
+      },
+    },
   };
 
   return (
@@ -657,22 +692,7 @@ export default function PropertyScreen() {
                   <Calendar
                     markingType="period"
                     style={styles.calendar}
-                    theme={{
-                      ...calendarTheme,
-                      stylesheet: {
-                        calendar: {
-                          main: {
-                            week: {
-                              marginTop: 0,
-                              marginBottom: 0,
-                              paddingVertical: 0,
-                              flexDirection: "row",
-                              justifyContent: "space-around",
-                            },
-                          },
-                        },
-                      },
-                    }}
+                    theme={calendarTheme}
                     enableSwipeMonths
                     hideExtraDays={false}
                     showSixWeeks
@@ -1148,6 +1168,13 @@ export default function PropertyScreen() {
 
 function createStyles(scale: number, brand: BrandColors) {
   const s = (n: number) => fs(n, scale);
+  const weekGap = 3;
+  const calendarWidthRatio = 0.96;
+  const contentPad = 32;
+  const calendarWidth =
+    (Dimensions.get("window").width - contentPad) * calendarWidthRatio;
+  const daySize = Math.floor((calendarWidth - weekGap * 6) / 7);
+
   return StyleSheet.create({
     root: {
       flex: 1,
@@ -1356,7 +1383,8 @@ function createStyles(scale: number, brand: BrandColors) {
       color: brand.claySoft,
     },
     calendar: {
-      width: "100%",
+      alignSelf: "center",
+      width: daySize * 7 + weekGap * 6,
       borderRadius: 14,
       overflow: "hidden",
     },
@@ -1501,14 +1529,14 @@ function createStyles(scale: number, brand: BrandColors) {
       marginTop: 0,
     },
     dayCell: {
-      width: 32,
-      height: 32,
+      width: daySize,
+      height: daySize,
       borderRadius: 5,
       alignItems: "center",
       justifyContent: "center",
       overflow: "hidden",
       padding: 0,
-      marginVertical: 1,
+      alignSelf: "center",
     },
     dayCellIdle: {
       backgroundColor: brand.sand,
@@ -1526,20 +1554,20 @@ function createStyles(scale: number, brand: BrandColors) {
       left: 0,
       width: 0,
       height: 0,
-      borderTopWidth: 32,
-      borderRightWidth: 32,
+      borderTopWidth: daySize,
+      borderRightWidth: daySize,
       borderTopColor: brand.calendarTurnover,
       borderRightColor: "transparent",
     },
     dayNumber: {
-      fontSize: s(10),
-      lineHeight: s(11),
+      fontSize: s(12),
+      lineHeight: s(14),
       fontWeight: "600",
       zIndex: 1,
     },
     dayPrice: {
-      fontSize: s(6),
-      lineHeight: s(7),
+      fontSize: s(8),
+      lineHeight: s(9),
       marginTop: 0,
       zIndex: 1,
     },
