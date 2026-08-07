@@ -17,7 +17,7 @@ import { supabase } from "@/lib/supabase";
 import { fs } from "@/lib/typography";
 import type { YearOverview } from "@/lib/yearOverview";
 import { getYearOverview } from "@/lib/yearOverview";
-import { Stack, useLocalSearchParams } from "expo-router";
+import { Stack, useLocalSearchParams, router } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
@@ -559,51 +559,63 @@ export default function PropertyScreen() {
 
   return (
     <View style={styles.root}>
-      <Stack.Screen
-        options={{
-          headerTitle: () => (
-            <Pressable onPress={() => setPropertyYear(true)}>
-              <Text style={{ color: brand.primary, fontWeight: "700" }}>
+      <Stack.Screen options={{ headerShown: false }} />
+
+      <SafeAreaView style={styles.safe} edges={["top", "bottom", "left", "right"]}>
+        <View style={styles.propertyHeader}>
+          <View style={styles.propertyHeaderTop}>
+            <Pressable
+              style={styles.headerTitleBtn}
+              onPress={() => setPropertyYear(true)}
+            >
+              <Text style={styles.headerTitleText} numberOfLines={1}>
                 {propertyName}
               </Text>
             </Pressable>
-          ),
-          headerTitleAlign: "center",
-          headerTintColor: brand.primary,
-          headerRight: () => (
+
             <Pressable
+              style={[styles.headerPill, styles.headerSide]}
+              onPress={() => router.back()}
+            >
+              <Text style={styles.headerPillText}>{"<"} Σπίτια</Text>
+            </Pressable>
+
+            <Pressable
+              style={[styles.headerPill, styles.headerSide]}
               onPress={() =>
                 setYearOverview(
                   getYearOverview(bookings, rooms, roomPrices, overviewYear),
                 )
               }
             >
-              <Text style={{ color: brand.primary, fontWeight: "700" }}>
-                {overviewYear}
-              </Text>
+              <Text style={styles.headerPillText}>{overviewYear}</Text>
             </Pressable>
-          ),
-        }}
-      />
-      {/* <ImageBackground
-        source={require("@/assets/images/licensed-image.jpg")}
-        style={styles.backgroundImage}
-        resizeMode="cover"
-      > */}
-      <View style={styles.dim} />
-      <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+          </View>
+
+          <View style={styles.propertyHeaderActions}>
+            <RoomsSelector
+              key={refreshKey}
+              propertyId={propertyId}
+              selectedRoom={selectedRoom}
+              onSelectRoom={setSelectedRoom}
+              onRoomsChanged={fetchPropertyData}
+              compact
+            />
+            <Pressable
+              style={styles.expensesBtn}
+              onPress={() =>
+                Alert.alert("Έξοδα", "Σύντομα διαθέσιμο.")
+              }
+            >
+              <Text style={styles.expensesBtnText}>Έξοδα</Text>
+            </Pressable>
+          </View>
+        </View>
+
         <ScrollView
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-          <RoomsSelector
-            key={refreshKey}
-            propertyId={propertyId}
-            selectedRoom={selectedRoom}
-            onSelectRoom={setSelectedRoom}
-            onRoomsChanged={fetchPropertyData}
-          />
-
           {rooms.length === 0 ? (
             <View style={styles.panel}>
               <Text style={styles.hint}>
@@ -1139,7 +1151,7 @@ function createStyles(scale: number, brand: BrandColors) {
   return StyleSheet.create({
     root: {
       flex: 1,
-      backgroundColor: brand.ink,
+      backgroundColor: brand.sand,
     },
     backgroundImage: {
       flex: 1,
@@ -1150,6 +1162,75 @@ function createStyles(scale: number, brand: BrandColors) {
     },
     safe: {
       flex: 1,
+    },
+    propertyHeader: {
+      backgroundColor: "#16323A",
+      paddingVertical: 6,
+      paddingHorizontal: 18,
+      zIndex: 10,
+      gap: 10,
+    },
+    propertyHeaderTop: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      position: "relative",
+      minHeight: 36,
+    },
+    headerPill: {
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.35)",
+      borderRadius: 10,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+    },
+    headerSide: {
+      zIndex: 1,
+    },
+    headerPillText: {
+      color: "#f2ebe3",
+      fontWeight: "700",
+      fontSize: s(13),
+    },
+    headerTitleBtn: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 88,
+      zIndex: 0,
+    },
+    headerTitleText: {
+      color: "#ffffff",
+      fontWeight: "700",
+      fontSize: s(17),
+      textAlign: "center",
+    },
+    propertyHeaderActions: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    expensesBtn: {
+      flex: 1,
+      minWidth: 0,
+      backgroundColor: "rgba(217, 138, 61, 0.22)",
+      borderWidth: 1,
+      borderColor: "rgba(217, 138, 61, 0.5)",
+      borderRadius: 7,
+      paddingVertical: 4,
+      paddingHorizontal: 2,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    expensesBtnText: {
+      color: "#F1EFE6",
+      fontWeight: "600",
+      fontSize: 11.5,
+      lineHeight: 14,
     },
     content: {
       padding: 16,
@@ -1180,7 +1261,7 @@ function createStyles(scale: number, brand: BrandColors) {
       flex: 1,
       flexShrink: 1,
       textAlign: "center",
-      color: brand.white,
+      color: "#ffffff",
       fontSize: s(16),
       fontWeight: "700",
     },
@@ -1190,10 +1271,10 @@ function createStyles(scale: number, brand: BrandColors) {
       paddingVertical: 8,
       borderRadius: 10,
       borderWidth: 1,
-      borderColor: brand.white,
+      borderColor: "#ffffff",
     },
     pricesButtonText: {
-      color: brand.white,
+      color: "#ffffff",
       fontWeight: "700",
       fontSize: s(13),
     },
@@ -1204,7 +1285,7 @@ function createStyles(scale: number, brand: BrandColors) {
       borderRadius: 10,
     },
     deleteRoomButtonText: {
-      color: brand.white,
+      color: "#ffffff",
       fontWeight: "700",
       fontSize: s(13),
     },
