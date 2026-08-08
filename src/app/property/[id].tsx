@@ -1,4 +1,6 @@
 import { Booking, BookingsList } from "@/components/BookingsList";
+import { BookingInfoModal } from "@/components/BookingInfoModal";
+import { ExpensesProp } from "@/components/ExpensesProp";
 import { PropertyOverviewModal } from "@/components/PropertyOverviewModal";
 import { RoomPlate } from "@/components/RoomPlate";
 import RoomsSelector, { Room } from "@/components/RoomsSelector";
@@ -158,6 +160,11 @@ export default function PropertyScreen() {
   const [bookingRoomId, setBookingRoomId] = useState<string | null>(null);
   const [yearOverview, setYearOverview] = useState<YearOverview | null>(null);
   const [propertyYear, setPropertyYear] = useState(false);
+  const [showExpenses, setShowExpenses] = useState(false);
+  const [bookingInfo, setBookingInfo] = useState<{
+    booking: Booking;
+    pressedDate: string;
+  } | null>(null);
   const overviewYear = new Date().getFullYear();
 
   const { settings } = useSettings();
@@ -272,6 +279,13 @@ export default function PropertyScreen() {
   }
 
   async function handleDayLongPress(room: Room, dateString: string) {
+    const existingBooking = bookings.find((b) => b.room_id === room.id && b.start_date <= dateString && b.end_date >= dateString);
+
+    if (existingBooking) {
+      setNoteBooking(existingBooking);
+      return;
+    }
+
     const booking = bookings.find(
       (b) =>
         b.room_id === room.id &&
@@ -439,6 +453,18 @@ export default function PropertyScreen() {
   }
 
   async function handleDayPress(room: Room, dateString: string) {
+    const existing = bookings.find(
+      (b) =>
+        b.room_id === room.id &&
+        b.start_date.slice(0, 10) <= dateString &&
+        b.end_date.slice(0, 10) >= dateString,
+    );
+    if (existing) {
+      setSelectStartByRoom((prev) => ({ ...prev, [room.id]: null }));
+      setBookingInfo({ booking: existing, pressedDate: dateString });
+      return;
+    }
+
     const selectStartDate = selectStartByRoom[room.id] ?? null;
 
     if (!selectStartDate) {
@@ -639,7 +665,7 @@ export default function PropertyScreen() {
             <Pressable
               style={styles.expensesBtn}
               onPress={() =>
-                Alert.alert("Έξοδα", "Σύντομα διαθέσιμο.")
+                setShowExpenses(true)
               }
             >
               <Text style={styles.expensesBtnText}>Έξοδα</Text>
@@ -844,6 +870,26 @@ export default function PropertyScreen() {
         roomPrices={roomPrices}
         onClose={() => setPropertyYear(false)}
       />
+
+      <ExpensesProp
+        visible={showExpenses}
+        propertyId={
+          Array.isArray(propertyId) ? propertyId[0] : (propertyId ?? "")
+        }
+        propertyName={propertyName}
+        onClose={() => setShowExpenses(false)}
+      />
+
+      {bookingInfo ? (
+        <BookingInfoModal
+          visible
+          booking={bookingInfo.booking}
+          pressedDate={bookingInfo.pressedDate}
+          roomPrices={roomPrices}
+          rooms={rooms}
+          onClose={() => setBookingInfo(null)}
+        />
+      ) : null}
 
       <Modal
         visible={bookingRoomId !== null}
