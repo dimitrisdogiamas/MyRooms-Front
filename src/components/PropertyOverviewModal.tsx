@@ -115,22 +115,22 @@ export function PropertyOverviewModal({
 
 function createStyles(scale: number, brand: BrandColors) {
   const s = (n: number) => fs(n, scale);
-  const surface = "#1c2624";
-  const idle = "#2a3533";
 
   return StyleSheet.create({
     overlay: {
       flex: 1,
-      backgroundColor: "rgba(0,0,0,0.55)",
+      backgroundColor: "rgba(0,0,0,0.45)",
       justifyContent: "center",
       padding: 16,
     },
     panel: {
-      backgroundColor: surface,
+      backgroundColor: brand.white,
       borderRadius: 24,
       padding: 18,
       maxHeight: "90%",
       gap: 12,
+      borderWidth: 1,
+      borderColor: brand.sandDeep,
     },
     scrollContent: {
       gap: 14,
@@ -139,18 +139,18 @@ function createStyles(scale: number, brand: BrandColors) {
     title: {
       fontSize: s(24),
       fontWeight: "700",
-      color: "#f2ebe3",
+      color: brand.ink,
       fontFamily: Fonts?.serif,
       textAlign: "center",
     },
     subtitle: {
       fontSize: s(15),
-      color: "#9aa9a8",
+      color: brand.claySoft,
       textAlign: "center",
       marginTop: -6,
     },
     totalsCard: {
-      backgroundColor: "#dfece8",
+      backgroundColor: brand.sandDeep,
       borderRadius: 16,
       padding: 16,
       gap: 6,
@@ -158,29 +158,31 @@ function createStyles(scale: number, brand: BrandColors) {
     totalsTitle: {
       fontSize: s(16),
       fontWeight: "700",
-      color: "#1f2a28",
+      color: brand.ink,
       marginBottom: 4,
     },
     totalsLine: {
       fontSize: s(14),
-      color: "#1f2a28",
+      color: brand.ink,
     },
     totalsIncome: {
       fontSize: s(15),
       fontWeight: "700",
-      color: brand.calendarBlue,
+      color: brand.primary,
       marginTop: 4,
     },
     yearCard: {
-      backgroundColor: idle,
+      backgroundColor: brand.sand,
       borderRadius: 14,
       padding: 14,
       gap: 10,
+      borderWidth: 1,
+      borderColor: brand.sandDeep,
     },
     yearTitle: {
       fontSize: s(18),
       fontWeight: "700",
-      color: "#f2ebe3",
+      color: brand.ink,
     },
     statsRow: {
       flexDirection: "row",
@@ -188,35 +190,37 @@ function createStyles(scale: number, brand: BrandColors) {
     },
     statItem: {
       flex: 1,
-      backgroundColor: surface,
+      backgroundColor: brand.white,
       borderRadius: 10,
       paddingVertical: 10,
       alignItems: "center",
+      borderWidth: 1,
+      borderColor: brand.sandDeep,
     },
     statLabel: {
       fontSize: s(11),
-      color: "#9aa9a8",
+      color: brand.claySoft,
       marginBottom: 4,
     },
     statValue: {
       fontSize: s(15),
       fontWeight: "700",
-      color: "#f2ebe3",
+      color: brand.ink,
     },
     yearRevenue: {
       fontSize: s(14),
       fontWeight: "700",
-      color: brand.calendarBlue,
+      color: brand.primary,
     },
     closeBtn: {
       borderWidth: 1,
-      borderColor: "rgba(255,255,255,0.35)",
+      borderColor: brand.sandDeep,
       borderRadius: 14,
       paddingVertical: 14,
       alignItems: "center",
     },
     closeText: {
-      color: "#f2ebe3",
+      color: brand.ink,
       fontWeight: "700",
       fontSize: s(15),
     },
