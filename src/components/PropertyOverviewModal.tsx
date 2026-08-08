@@ -61,45 +61,53 @@ export function PropertyOverviewModal({
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
           >
-            <Text style={styles.title}>Επισκόπηση ιδιοκτησίας</Text>
-            <Text style={styles.subtitle}>{propertyName}</Text>
+            <View style={styles.headerBlock}>
+              <Text style={styles.title}>Επισκόπηση όλων των ετών</Text>
+              <Text style={styles.subtitle}>{propertyName}</Text>
+            </View>
 
             <View style={styles.totalsCard}>
               <Text style={styles.totalsTitle}>Σύνολο</Text>
-              <Text style={styles.totalsLine}>
-                Άτομα (μοναδικά): {overview.totals.guests}
-              </Text>
-              <Text style={styles.totalsLine}>
-                Κρατήσεις: {overview.totals.bookings}
-              </Text>
-              <Text style={styles.totalsLine}>
-                Διανυκτερεύσεις: {overview.totals.occupiedNights}
-              </Text>
-              <Text style={styles.totalsIncome}>
-                Έσοδα: {overview.totals.revenue.toFixed(2)}€
-              </Text>
+              <View style={styles.totalsBody}>
+                <Text style={styles.totalsLine}>
+                  Άτομα (μοναδικά): {overview.totals.guests}
+                </Text>
+                <Text style={styles.totalsLine}>
+                  Κρατήσεις: {overview.totals.bookings}
+                </Text>
+                <Text style={styles.totalsLine}>
+                  Διανυκτερεύσεις: {overview.totals.occupiedNights}
+                </Text>
+                <Text style={styles.totalsIncome}>
+                  Έσοδα: {overview.totals.revenue.toFixed(2)}€
+                </Text>
+              </View>
             </View>
 
             {overview.years.map((year) => (
               <View key={year.year} style={styles.yearCard}>
                 <Text style={styles.yearTitle}>{year.year}</Text>
-                <View style={styles.statsRow}>
-                  <View style={styles.statItem}>
-                    <Text style={styles.statLabel}>Άτομα</Text>
-                    <Text style={styles.statValue}>{year.guests}</Text>
+                <View style={styles.yearBody}>
+                  <View style={styles.statsRow}>
+                    <View style={styles.statItem}>
+                      <Text style={styles.statLabel}>Άτομα</Text>
+                      <Text style={styles.statValue}>{year.guests}</Text>
+                    </View>
+                    <View style={styles.statItem}>
+                      <Text style={styles.statLabel}>Κρατήσεις</Text>
+                      <Text style={styles.statValue}>{year.bookings}</Text>
+                    </View>
+                    <View style={styles.statItem}>
+                      <Text style={styles.statLabel}>Νύχτες</Text>
+                      <Text style={styles.statValue}>
+                        {year.occupiedNights}
+                      </Text>
+                    </View>
                   </View>
-                  <View style={styles.statItem}>
-                    <Text style={styles.statLabel}>Κρατήσεις</Text>
-                    <Text style={styles.statValue}>{year.bookings}</Text>
-                  </View>
-                  <View style={styles.statItem}>
-                    <Text style={styles.statLabel}>Νύχτες</Text>
-                    <Text style={styles.statValue}>{year.occupiedNights}</Text>
-                  </View>
+                  <Text style={styles.yearRevenue}>
+                    Έσοδα: {year.revenue.toFixed(2)}€
+                  </Text>
                 </View>
-                <Text style={styles.yearRevenue}>
-                  Έσοδα: {year.revenue.toFixed(2)}€
-                </Text>
               </View>
             ))}
           </ScrollView>
@@ -133,49 +141,63 @@ function createStyles(scale: number, brand: BrandColors) {
       borderColor: brand.sandDeep,
     },
     scrollContent: {
-      gap: 14,
+      gap: 16,
       paddingBottom: 8,
+      alignItems: "stretch",
+    },
+    headerBlock: {
+      alignItems: "center",
+      marginBottom: 4,
+      gap: 6,
     },
     title: {
-      fontSize: s(24),
+      fontSize: s(22),
       fontWeight: "700",
       color: brand.ink,
       fontFamily: Fonts?.serif,
       textAlign: "center",
+      width: "100%",
     },
     subtitle: {
       fontSize: s(15),
       color: brand.claySoft,
       textAlign: "center",
-      marginTop: -6,
     },
     totalsCard: {
       backgroundColor: brand.sandDeep,
       borderRadius: 16,
       padding: 16,
-      gap: 6,
+      gap: 0,
     },
     totalsTitle: {
       fontSize: s(16),
       fontWeight: "700",
       color: brand.ink,
-      marginBottom: 4,
+      textAlign: "center",
+      width: "100%",
+    },
+    totalsBody: {
+      marginTop: 14,
+      gap: 6,
+      alignItems: "center",
     },
     totalsLine: {
       fontSize: s(14),
       color: brand.ink,
+      textAlign: "center",
     },
     totalsIncome: {
       fontSize: s(15),
       fontWeight: "700",
       color: brand.primary,
       marginTop: 4,
+      textAlign: "center",
     },
     yearCard: {
       backgroundColor: brand.sand,
       borderRadius: 14,
       padding: 14,
-      gap: 10,
+      gap: 0,
       borderWidth: 1,
       borderColor: brand.sandDeep,
     },
@@ -183,6 +205,12 @@ function createStyles(scale: number, brand: BrandColors) {
       fontSize: s(18),
       fontWeight: "700",
       color: brand.ink,
+      textAlign: "center",
+      width: "100%",
+    },
+    yearBody: {
+      marginTop: 14,
+      gap: 10,
     },
     statsRow: {
       flexDirection: "row",
@@ -201,16 +229,19 @@ function createStyles(scale: number, brand: BrandColors) {
       fontSize: s(11),
       color: brand.claySoft,
       marginBottom: 4,
+      textAlign: "center",
     },
     statValue: {
       fontSize: s(15),
       fontWeight: "700",
       color: brand.ink,
+      textAlign: "center",
     },
     yearRevenue: {
       fontSize: s(14),
       fontWeight: "700",
       color: brand.primary,
+      textAlign: "center",
     },
     closeBtn: {
       borderWidth: 1,
