@@ -3,7 +3,7 @@ import { fontOptions, fs } from "@/lib/typography";
 import { useMemo } from "react";
 import { useSettings } from "@/context/SettingsProvider";
 import { useBrand } from "@/hooks/use-brand";
-import { Pressable,
+import { Alert, Pressable,
   ScrollView,
   StyleSheet,
   Switch,
@@ -11,6 +11,7 @@ import { Pressable,
   TextInput,
   View,
 } from "react-native";
+import { useAuth } from "@/context/AuthProvider";
 
 export default function SettingsScreen() {
   const { settings, setSettings, saveSettings } = useSettings();
@@ -19,6 +20,7 @@ export default function SettingsScreen() {
     () => createStyles(settings.fontScale, brand, settings.compactMode),
     [settings.fontScale, settings.compactMode, brand],
   );
+  const {signOut, session} = useAuth();
 
   return (
     <ScrollView
@@ -155,6 +157,22 @@ export default function SettingsScreen() {
       >
         <Text style={styles.saveButtonText}>Αποθήκευση</Text>
       </Pressable>
+
+
+
+      <Pressable
+        style={styles.logoutButton}
+        onPress={async () => {
+          try {
+            await signOut();
+          } catch (error) {
+            Alert.alert("Error"
+              , error instanceof Error ? error.message : "Failed to logout");
+          }
+        }}
+      >
+        <Text style={styles.logoutButtonText}>Αποσύνδεση</Text>
+      </Pressable>
     </ScrollView>
   );
 }
@@ -267,6 +285,18 @@ function createStyles(scale: number, brand: BrandColors, compactMode: boolean) {
     },
     fontScaleButtonTextActive: {
       color: brand.white,
+    },
+    logoutButton: {
+      marginTop: compactMode ? 12 : 20,
+      backgroundColor: brand.primary,
+      borderRadius: 12,
+      paddingVertical: compactMode ? 10 : 14,
+      alignItems: "center",
+    },
+    logoutButtonText: {
+      color: brand.white,
+      fontWeight: "700",
+      fontSize: s(16),
     },
   });
 }
