@@ -36,29 +36,29 @@ function RootLayoutNav() {
       <StatusBar style={scheme === "dark" ? "light" : "dark"} />
       <AnimatedSplashOverlay />
       <Stack>
-        {session ? (
-          <>
-            <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="property/[id]"
-              options={{
-                presentation: "modal",
-                title: "Κράτηση",
-                headerShown: true,
-              }}
-            />
-            <Stack.Screen
-              name="settings"
-              options={{
-                presentation: "modal",
-                title: "Ρυθμίσεις",
-                headerShown: true,
-              }}
-            />
-          </>
-        ) : (
+        <Stack.Protected guard={!!session}>
+          <Stack.Screen name="index" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="property/[id]"
+            options={{
+              presentation: "modal",
+              title: "Κράτηση",
+              headerShown: true,
+            }}
+          />
+          <Stack.Screen
+            name="settings"
+            options={{
+              presentation: "modal",
+              title: "Ρυθμίσεις",
+              headerShown: true,
+            }}
+          />
+        </Stack.Protected>
+
+        <Stack.Protected guard={!session}>
           <Stack.Screen name="login" options={{ headerShown: false }} />
-        )}
+        </Stack.Protected>
       </Stack>
     </ThemeProvider>
   );
