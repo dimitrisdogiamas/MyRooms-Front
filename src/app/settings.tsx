@@ -145,12 +145,6 @@ export default function SettingsScreen() {
             textAlign="center"
           />
         </View>
-
-        <Text style={styles.sectionTitle}>Σχετικά</Text>
-        <View style={styles.card}>
-          <Text style={styles.meta}>my-rooms · v1.0.0</Text>
-        </View>
-
         <Pressable
           style={styles.saveButton}
           onPress={() => {
@@ -161,23 +155,7 @@ export default function SettingsScreen() {
         </Pressable>
       </View>
 
-      <Text style={styles.sectionTitle}>Σχετικά</Text>
-      <View style={styles.card}>
-        <Text style={styles.meta}>my-rooms · v1.0.0</Text>
-      </View>
-
-      <Pressable
-        style={styles.saveButton}
-        onPress={() => {
-          void saveSettings();
-        }}
-      >
-        <Text style={styles.saveButtonText}>Αποθήκευση</Text>
-      </Pressable>
-
-
-
-      <Pressable
+       <Pressable
         style={styles.logoutButton}
         onPress={async () => {
           try {
@@ -188,8 +166,13 @@ export default function SettingsScreen() {
           }
         }}
       >
-        <Text style={styles.logoutButtonText}>Αποσύνδεση</Text>
+        <Text style={styles.saveButtonText}>Αποσύνδεση</Text>
       </Pressable>
+
+      <Text style={styles.sectionTitle}>Σχετικά</Text>
+        <View style={styles.card}>
+          <Text style={styles.meta}>my-rooms · v1.0.0</Text>
+        </View>
     </ScrollView>
   );
 }
@@ -289,7 +272,7 @@ function createStyles(scale: number, brand: BrandColors, compactMode: boolean) {
     saveButton: {
       marginTop: compactMode ? 8 : 12,
       backgroundColor: brand.primary,
-      borderRadius: 14,
+      borderRadius: 12,
       paddingVertical: compactMode ? 12 : 16,
       alignItems: "center",
     },
@@ -341,6 +324,7 @@ function createStyles(scale: number, brand: BrandColors, compactMode: boolean) {
     },
     logoutButton: {
       marginTop: compactMode ? 12 : 20,
+      width: "100%",
       backgroundColor: brand.primary,
       borderRadius: 12,
       paddingVertical: compactMode ? 10 : 14,
