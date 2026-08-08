@@ -28,120 +28,137 @@ export default function SettingsScreen() {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={styles.sectionTitle}>Ρυθμίσεις</Text>
-      <View style={styles.card}>
-        <Text style={styles.label}>Εμφάνιση Εφαρμογής</Text>
-        <View style={{ gap: 8 }}>
-          {(["light", "dark", "system"] as const).map((t) => (
-            <Pressable
-              key={t}
-              onPress={() => setSettings({ ...settings, theme: t })}
-              style={[
-                styles.themeButton,
-                settings.theme === t && styles.themeButtonActive,
-              ]}
-            >
-              <Text
+      <View style={styles.inner}>
+        <Text style={styles.pageTitle}>Ρυθμίσεις</Text>
+
+        <View style={styles.card}>
+          <Text style={styles.cardHeading}>Εμφάνιση Εφαρμογής</Text>
+          <View style={styles.optionsColumn}>
+            {(["light", "dark", "system"] as const).map((t) => (
+              <Pressable
+                key={t}
+                onPress={() => setSettings({ ...settings, theme: t })}
                 style={[
-                  styles.themeButtonText,
-                  settings.theme === t && styles.themeButtonTextActive,
+                  styles.optionButton,
+                  settings.theme === t && styles.optionButtonActive,
                 ]}
               >
-                {t === "light"
-                  ? "Λευκό"
-                  : t === "dark"
-                    ? "Σκούρο"
-                    : "Ίδιο με το σύστημα"}
-              </Text>
-            </Pressable>
-          ))}
+                <Text
+                  style={[
+                    styles.optionButtonText,
+                    settings.theme === t && styles.optionButtonTextActive,
+                  ]}
+                >
+                  {t === "light"
+                    ? "Λευκό"
+                    : t === "dark"
+                      ? "Σκούρο"
+                      : "Ίδιο με το σύστημα"}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
-      </View>
 
-      <View style={styles.card}>
-        <Text style={styles.label}>Μέγεθος Κειμένου</Text>
-        <View style={{ gap: 8 }}>
-          {fontOptions.map((opt) => (
-            <Pressable
-              key={opt.label}
-              onPress={() => setSettings({ ...settings, fontScale: opt.value })}
-              style={[
-                styles.fontScaleButton,
-                settings.fontScale === opt.value && styles.fontScaleButtonActive,
-              ]}
-            >
-              <Text
+        <View style={styles.card}>
+          <Text style={styles.cardHeading}>Μέγεθος Κειμένου</Text>
+          <View style={styles.optionsColumn}>
+            {fontOptions.map((opt) => (
+              <Pressable
+                key={opt.label}
+                onPress={() =>
+                  setSettings({ ...settings, fontScale: opt.value })
+                }
                 style={[
-                  styles.fontScaleButtonText,
-                  settings.fontScale === opt.value &&
-                    styles.fontScaleButtonTextActive,
+                  styles.optionButton,
+                  settings.fontScale === opt.value && styles.optionButtonActive,
                 ]}
               >
-                {opt.label}
-              </Text>
-            </Pressable>
-          ))}
+                <Text
+                  style={[
+                    styles.optionButtonText,
+                    settings.fontScale === opt.value &&
+                      styles.optionButtonTextActive,
+                  ]}
+                >
+                  {opt.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
-      </View>
 
-      <View style={styles.card}>
-        <View style={styles.row}>
-          <Text style={styles.label}>Ειδοποίηση άφιξης</Text>
-          <Switch
-            value={settings.notifyArrival}
-            onValueChange={(value) =>
-              setSettings({ ...settings, notifyArrival: value })
-            }
-            trackColor={{ true: brand.primary, false: brand.sandDeep }}
+        <View style={styles.card}>
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Ειδοποίηση άφιξης</Text>
+            <Switch
+              value={settings.notifyArrival}
+              onValueChange={(value) =>
+                setSettings({ ...settings, notifyArrival: value })
+              }
+              trackColor={{ true: brand.primary, false: brand.sandDeep }}
+            />
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Ειδοποίηση αναχώρησης</Text>
+            <Switch
+              value={settings.notifyDeparture}
+              onValueChange={(value) =>
+                setSettings({ ...settings, notifyDeparture: value })
+              }
+              trackColor={{ true: brand.primary, false: brand.sandDeep }}
+            />
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Συμπαγής εμφάνιση</Text>
+            <Switch
+              value={settings.compactMode}
+              onValueChange={(value) =>
+                setSettings({ ...settings, compactMode: value })
+              }
+              trackColor={{ true: brand.primary, false: brand.sandDeep }}
+            />
+          </View>
+        </View>
+
+        <Text style={styles.sectionTitle}>Κρατήσεις</Text>
+        <View style={styles.card}>
+          <Text style={styles.cardHeading}>Ελάχιστες Διανυκτερεύσεις</Text>
+          <TextInput
+            style={styles.input}
+            value={String(settings.minNights)}
+            onChangeText={(text) => {
+              if (text === "") {
+                setSettings({ ...settings, minNights: 1 });
+                return;
+              }
+              const n = parseInt(text, 10);
+              if (!Number.isNaN(n)) {
+                setSettings({ ...settings, minNights: n });
+              }
+            }}
+            keyboardType="number-pad"
+            placeholder="1"
+            placeholderTextColor={brand.claySoft}
+            textAlign="center"
           />
         </View>
-        <View style={styles.divider} />
-        <View style={styles.row}>
-          <Text style={styles.label}>Ειδοποίηση αναχώρησης</Text>
-          <Switch
-            value={settings.notifyDeparture}
-            onValueChange={(value) =>
-              setSettings({ ...settings, notifyDeparture: value })
-            }
-            trackColor={{ true: brand.primary, false: brand.sandDeep }}
-          />
+
+        <Text style={styles.sectionTitle}>Σχετικά</Text>
+        <View style={styles.card}>
+          <Text style={styles.meta}>my-rooms · v1.0.0</Text>
         </View>
-      </View>
 
-
-      <View style={styles.card}>
-        <View style={styles.row}>
-          <Text style={styles.label}>Συμπαγής εμφάνιση</Text>
-          <Switch
-            value={settings.compactMode}
-            onValueChange={(value) =>
-              setSettings({ ...settings, compactMode: value })
-            }
-            trackColor={{ true: brand.primary, false: brand.sandDeep }}
-          />
-        </View>
-      </View>
-
-      <Text style={styles.sectionTitle}>Κρατήσεις</Text>
-      <View style={styles.card}>
-        <Text style={styles.label}>Ελάχιστες διανυκτερεύσεις</Text>
-        <TextInput
-          style={styles.input}
-          value={String(settings.minNights)}
-          onChangeText={(text) => {
-            if (text === "") {
-              setSettings({ ...settings, minNights: 1 });
-              return;
-            }
-            const n = parseInt(text, 10);
-            if (!Number.isNaN(n)) {
-              setSettings({ ...settings, minNights: n });
-            }
+        <Pressable
+          style={styles.saveButton}
+          onPress={() => {
+            void saveSettings();
           }}
-          keyboardType="number-pad"
-          placeholder="1"
-          placeholderTextColor={brand.claySoft}
-        />
+        >
+          <Text style={styles.saveButtonText}>Αποθήκευση</Text>
+        </Pressable>
       </View>
 
       <Text style={styles.sectionTitle}>Σχετικά</Text>
@@ -179,91 +196,127 @@ export default function SettingsScreen() {
 
 function createStyles(scale: number, brand: BrandColors, compactMode: boolean) {
   const s = (n: number) => fs(n, scale);
+  const pad = compactMode ? 12 : 20;
+  const gap = compactMode ? 10 : 14;
+
   return StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: brand.sand,
     },
     content: {
-      padding: compactMode ? 8 : 16,
-      gap: compactMode ? 6 : 8,
-      paddingBottom: compactMode ? 24 : 40,
+      flexGrow: 1,
+      paddingVertical: compactMode ? 16 : 28,
+      paddingHorizontal: pad,
+      alignItems: "center",
+    },
+    inner: {
+      width: "100%",
+      maxWidth: 440,
+      gap,
+    },
+    pageTitle: {
+      fontSize: s(26),
+      fontWeight: "700",
+      color: brand.ink,
+      textAlign: "center",
+      marginBottom: compactMode ? 4 : 8,
     },
     sectionTitle: {
-      marginTop: compactMode ? 8 : 12,
-      marginBottom: 4,
-      fontSize: s(13),
+      marginTop: compactMode ? 6 : 10,
+      marginBottom: 2,
+      fontSize: s(12),
       fontWeight: "700",
       color: brand.primary,
-      letterSpacing: 0.6,
+      letterSpacing: 0.8,
       textTransform: "uppercase",
+      textAlign: "center",
     },
     card: {
       backgroundColor: brand.white,
-      borderRadius: 12,
+      borderRadius: 16,
       borderWidth: 1,
       borderColor: brand.sandDeep,
-      padding: compactMode ? 8 : 14,
-      gap: compactMode ? 6 : 10,
+      padding: compactMode ? 14 : 18,
+      gap: 0,
+    },
+    optionsColumn: {
+      gap: compactMode ? 8 : 10,
+      marginTop: compactMode ? 14 : 18,
     },
     row: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       gap: 12,
+      minHeight: 36,
     },
     divider: {
-      height: 1,
+      height: StyleSheet.hairlineWidth,
       backgroundColor: brand.sandDeep,
+      marginVertical: compactMode ? 8 : 10,
     },
-    label: {
+    cardHeading: {
+      fontSize: s(15),
+      color: brand.ink,
+      fontWeight: "700",
+      textAlign: "center",
+      width: "100%",
+    },
+    rowLabel: {
       flex: 1,
       fontSize: s(15),
       color: brand.ink,
       fontWeight: "600",
+      textAlign: "left",
     },
     input: {
       borderWidth: 1,
       borderColor: brand.sandDeep,
-      borderRadius: 8,
+      borderRadius: 10,
       paddingHorizontal: 12,
-      paddingVertical: compactMode ? 8 : 10,
+      paddingVertical: compactMode ? 10 : 12,
       fontSize: s(15),
       color: brand.ink,
       backgroundColor: brand.sand,
+      marginTop: compactMode ? 14 : 18,
     },
     meta: {
       fontSize: s(14),
       color: brand.claySoft,
+      textAlign: "center",
     },
     saveButton: {
-      marginTop: compactMode ? 12 : 20,
+      marginTop: compactMode ? 8 : 12,
       backgroundColor: brand.primary,
-      borderRadius: 12,
-      paddingVertical: compactMode ? 10 : 14,
+      borderRadius: 14,
+      paddingVertical: compactMode ? 12 : 16,
       alignItems: "center",
     },
     saveButtonText: {
-      color: brand.white,
+      color: "#ffffff",
       fontWeight: "700",
       fontSize: s(16),
     },
-    themeButton: {
-      paddingVertical: compactMode ? 6 : 8,
-      paddingHorizontal: 12,
-      borderRadius: 8,
+    optionButton: {
+      paddingVertical: compactMode ? 10 : 12,
+      paddingHorizontal: 14,
+      borderRadius: 10,
       borderWidth: 1,
       borderColor: brand.sandDeep,
+      alignItems: "center",
+      justifyContent: "center",
     },
-    themeButtonText: {
+    optionButtonText: {
       fontSize: s(14),
       color: brand.ink,
       fontWeight: "600",
+      textAlign: "center",
     },
-    themeButtonTextActive: {
-      color: brand.white,
+    optionButtonTextActive: {
+      color: "#ffffff",
     },
-    themeButtonActive: {
+    optionButtonActive: {
       backgroundColor: brand.primary,
       borderColor: brand.primary,
     },
@@ -300,4 +353,3 @@ function createStyles(scale: number, brand: BrandColors, compactMode: boolean) {
     },
   });
 }
-
