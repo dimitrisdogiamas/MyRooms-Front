@@ -3,8 +3,7 @@ import { fontOptions, fs } from "@/lib/typography";
 import { useMemo } from "react";
 import { useSettings } from "@/context/SettingsProvider";
 import { useBrand } from "@/hooks/use-brand";
-import {
-  Pressable,
+import { Alert, Pressable,
   ScrollView,
   StyleSheet,
   Switch,
@@ -12,6 +11,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useAuth } from "@/context/AuthProvider";
 
 export default function SettingsScreen() {
   const { settings, setSettings, saveSettings } = useSettings();
@@ -20,6 +20,7 @@ export default function SettingsScreen() {
     () => createStyles(settings.fontScale, brand, settings.compactMode),
     [settings.fontScale, settings.compactMode, brand],
   );
+  const {signOut, session} = useAuth();
 
   return (
     <ScrollView
@@ -159,6 +160,36 @@ export default function SettingsScreen() {
           <Text style={styles.saveButtonText}>Αποθήκευση</Text>
         </Pressable>
       </View>
+
+      <Text style={styles.sectionTitle}>Σχετικά</Text>
+      <View style={styles.card}>
+        <Text style={styles.meta}>my-rooms · v1.0.0</Text>
+      </View>
+
+      <Pressable
+        style={styles.saveButton}
+        onPress={() => {
+          void saveSettings();
+        }}
+      >
+        <Text style={styles.saveButtonText}>Αποθήκευση</Text>
+      </Pressable>
+
+
+
+      <Pressable
+        style={styles.logoutButton}
+        onPress={async () => {
+          try {
+            await signOut();
+          } catch (error) {
+            Alert.alert("Error"
+              , error instanceof Error ? error.message : "Failed to logout");
+          }
+        }}
+      >
+        <Text style={styles.logoutButtonText}>Αποσύνδεση</Text>
+      </Pressable>
     </ScrollView>
   );
 }
@@ -288,6 +319,37 @@ function createStyles(scale: number, brand: BrandColors, compactMode: boolean) {
     optionButtonActive: {
       backgroundColor: brand.primary,
       borderColor: brand.primary,
+    },
+    fontScaleButton: {
+      paddingVertical: compactMode ? 6 : 8,
+      paddingHorizontal: 12,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: brand.sandDeep,
+    },
+    fontScaleButtonActive: {
+      backgroundColor: brand.primary,
+      borderColor: brand.primary,
+    },
+    fontScaleButtonText: {
+      fontSize: s(14),
+      color: brand.ink,
+      fontWeight: "600",
+    },
+    fontScaleButtonTextActive: {
+      color: brand.white,
+    },
+    logoutButton: {
+      marginTop: compactMode ? 12 : 20,
+      backgroundColor: brand.primary,
+      borderRadius: 12,
+      paddingVertical: compactMode ? 10 : 14,
+      alignItems: "center",
+    },
+    logoutButtonText: {
+      color: brand.white,
+      fontWeight: "700",
+      fontSize: s(16),
     },
   });
 }
