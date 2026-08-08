@@ -279,13 +279,6 @@ export default function PropertyScreen() {
   }
 
   async function handleDayLongPress(room: Room, dateString: string) {
-    const existingBooking = bookings.find((b) => b.room_id === room.id && b.start_date <= dateString && b.end_date >= dateString);
-
-    if (existingBooking) {
-      setNoteBooking(existingBooking);
-      return;
-    }
-
     const booking = bookings.find(
       (b) =>
         b.room_id === room.id &&
