@@ -145,12 +145,6 @@ export default function SettingsScreen() {
             textAlign="center"
           />
         </View>
-
-        <Text style={styles.sectionTitle}>Σχετικά</Text>
-        <View style={styles.card}>
-          <Text style={styles.meta}>my-rooms · v1.0.0</Text>
-        </View>
-
         <Pressable
           style={styles.saveButton}
           onPress={() => {
@@ -161,23 +155,7 @@ export default function SettingsScreen() {
         </Pressable>
       </View>
 
-      <Text style={styles.sectionTitle}>Σχετικά</Text>
-      <View style={styles.card}>
-        <Text style={styles.meta}>my-rooms · v1.0.0</Text>
-      </View>
-
-      <Pressable
-        style={styles.saveButton}
-        onPress={() => {
-          void saveSettings();
-        }}
-      >
-        <Text style={styles.saveButtonText}>Αποθήκευση</Text>
-      </Pressable>
-
-
-
-      <Pressable
+       <Pressable
         style={styles.logoutButton}
         onPress={async () => {
           try {
@@ -188,8 +166,13 @@ export default function SettingsScreen() {
           }
         }}
       >
-        <Text style={styles.logoutButtonText}>Αποσύνδεση</Text>
+        <Text style={styles.saveButtonText}>Αποσύνδεση</Text>
       </Pressable>
+
+      <Text style={styles.sectionTitle}>Σχετικά</Text>
+        <View style={styles.card}>
+          <Text style={styles.meta}>my-rooms · v1.0.0</Text>
+        </View>
     </ScrollView>
   );
 }
@@ -223,7 +206,7 @@ function createStyles(scale: number, brand: BrandColors, compactMode: boolean) {
       marginBottom: compactMode ? 4 : 8,
     },
     sectionTitle: {
-      marginTop: compactMode ? 6 : 10,
+      marginTop: compactMode ? 8 : 10,
       marginBottom: 2,
       fontSize: s(12),
       fontWeight: "700",
@@ -241,8 +224,21 @@ function createStyles(scale: number, brand: BrandColors, compactMode: boolean) {
       gap: 0,
     },
     optionsColumn: {
+      flexDirection: "row",
+      flexWrap: "nowrap",
       gap: compactMode ? 8 : 10,
       marginTop: compactMode ? 14 : 18,
+    },
+    optionButton: {
+      flex: 1,
+      minWidth: 0,
+      paddingVertical: compactMode ? 10 : 12,
+      paddingHorizontal: 10,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: brand.sandDeep,
+      alignItems: "center",
+      justifyContent: "center",
     },
     row: {
       flexDirection: "row",
@@ -289,7 +285,7 @@ function createStyles(scale: number, brand: BrandColors, compactMode: boolean) {
     saveButton: {
       marginTop: compactMode ? 8 : 12,
       backgroundColor: brand.primary,
-      borderRadius: 14,
+      borderRadius: 12,
       paddingVertical: compactMode ? 12 : 16,
       alignItems: "center",
     },
@@ -298,17 +294,8 @@ function createStyles(scale: number, brand: BrandColors, compactMode: boolean) {
       fontWeight: "700",
       fontSize: s(16),
     },
-    optionButton: {
-      paddingVertical: compactMode ? 10 : 12,
-      paddingHorizontal: 14,
-      borderRadius: 10,
-      borderWidth: 1,
-      borderColor: brand.sandDeep,
-      alignItems: "center",
-      justifyContent: "center",
-    },
     optionButtonText: {
-      fontSize: s(14),
+      fontSize: s(13),
       color: brand.ink,
       fontWeight: "600",
       textAlign: "center",
@@ -320,27 +307,9 @@ function createStyles(scale: number, brand: BrandColors, compactMode: boolean) {
       backgroundColor: brand.primary,
       borderColor: brand.primary,
     },
-    fontScaleButton: {
-      paddingVertical: compactMode ? 6 : 8,
-      paddingHorizontal: 12,
-      borderRadius: 8,
-      borderWidth: 1,
-      borderColor: brand.sandDeep,
-    },
-    fontScaleButtonActive: {
-      backgroundColor: brand.primary,
-      borderColor: brand.primary,
-    },
-    fontScaleButtonText: {
-      fontSize: s(14),
-      color: brand.ink,
-      fontWeight: "600",
-    },
-    fontScaleButtonTextActive: {
-      color: brand.white,
-    },
     logoutButton: {
       marginTop: compactMode ? 12 : 20,
+      width: "100%",
       backgroundColor: brand.primary,
       borderRadius: 12,
       paddingVertical: compactMode ? 10 : 14,
