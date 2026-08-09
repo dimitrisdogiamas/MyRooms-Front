@@ -4,12 +4,17 @@ import { useBrand } from "@/hooks/use-brand";
 import {
   getPropertyOverview,
   type PropertyOverview,
+  type PropertyYearOverview,
 } from "@/lib/propertyOverview";
 import type { Booking } from "@/components/BookingsList";
 import type { Room } from "@/components/RoomsSelector";
 import type { RoomPricing } from "@/lib/roomPricing";
+import {
+  getPropertyExpenses,
+  type Expense,
+} from "@/lib/expenses";
 import { fs } from "@/lib/typography";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Modal,
   Pressable,
@@ -21,6 +26,7 @@ import {
 
 type PropertyOverviewModalProps = {
   visible: boolean;
+  propertyId: string;
   propertyName: string;
   bookings: Booking[];
   rooms: Room[];
@@ -28,8 +34,43 @@ type PropertyOverviewModalProps = {
   onClose: () => void;
 };
 
+function OverviewLines({
+  data,
+  styles,
+}: {
+  data: Pick<
+    PropertyYearOverview,
+    | "adults"
+    | "children"
+    | "bookings"
+    | "pricedNights"
+    | "zeroPriceNights"
+    | "revenue"
+    | "expenses"
+  >;
+  styles: ReturnType<typeof createStyles>;
+}) {
+  return (
+    <View style={styles.linesBlock}>
+      <Text style={styles.line}>
+        Άτομα: {data.adults} ενήλικες + {data.children} παιδιά
+      </Text>
+      <Text style={styles.line}>Κρατήσεις: {data.bookings}</Text>
+      <Text style={styles.line}>
+        Κοστολογημένες ημέρες κράτησης: {data.pricedNights}
+      </Text>
+      <Text style={styles.line}>
+        Μηδενικές ημέρες κράτησης: {data.zeroPriceNights}
+      </Text>
+      <Text style={styles.incomeLine}>Έσοδα: {data.revenue.toFixed(2)}€</Text>
+      <Text style={styles.expenseLine}>Έξοδα: {data.expenses.toFixed(2)}€</Text>
+    </View>
+  );
+}
+
 export function PropertyOverviewModal({
   visible,
+  propertyId,
   propertyName,
   bookings,
   rooms,
@@ -43,9 +84,33 @@ export function PropertyOverviewModal({
     [settings.fontScale, brand],
   );
 
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+
+  useEffect(() => {
+    if (!visible || !propertyId) {
+      setExpenses([]);
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const rows = await getPropertyExpenses(propertyId);
+        if (!cancelled) setExpenses(rows);
+      } catch (err) {
+        console.error("Error fetching expenses for overview:", err);
+        if (!cancelled) setExpenses([]);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, propertyId]);
+
   const overview: PropertyOverview = useMemo(
-    () => getPropertyOverview(bookings, rooms, roomPrices),
-    [bookings, rooms, roomPrices],
+    () => getPropertyOverview(bookings, rooms, roomPrices, expenses),
+    [bookings, rooms, roomPrices, expenses],
   );
 
   return (
@@ -68,46 +133,20 @@ export function PropertyOverviewModal({
 
             <View style={styles.totalsCard}>
               <Text style={styles.totalsTitle}>Σύνολο</Text>
-              <View style={styles.totalsBody}>
-                <Text style={styles.totalsLine}>
-                  Άτομα (μοναδικά): {overview.totals.guests}
-                </Text>
-                <Text style={styles.totalsLine}>
-                  Κρατήσεις: {overview.totals.bookings}
-                </Text>
-                <Text style={styles.totalsLine}>
-                  Διανυκτερεύσεις: {overview.totals.occupiedNights}
-                </Text>
-                <Text style={styles.totalsIncome}>
-                  Έσοδα: {overview.totals.revenue.toFixed(2)}€
-                </Text>
-              </View>
+              <OverviewLines data={overview.totals} styles={styles} />
+              <Text style={styles.netLine}>
+                Καθαρά:{" "}
+                {(overview.totals.revenue - overview.totals.expenses).toFixed(
+                  2,
+                )}
+                €
+              </Text>
             </View>
 
             {overview.years.map((year) => (
               <View key={year.year} style={styles.yearCard}>
                 <Text style={styles.yearTitle}>{year.year}</Text>
-                <View style={styles.yearBody}>
-                  <View style={styles.statsRow}>
-                    <View style={styles.statItem}>
-                      <Text style={styles.statLabel}>Άτομα</Text>
-                      <Text style={styles.statValue}>{year.guests}</Text>
-                    </View>
-                    <View style={styles.statItem}>
-                      <Text style={styles.statLabel}>Κρατήσεις</Text>
-                      <Text style={styles.statValue}>{year.bookings}</Text>
-                    </View>
-                    <View style={styles.statItem}>
-                      <Text style={styles.statLabel}>Νύχτες</Text>
-                      <Text style={styles.statValue}>
-                        {year.occupiedNights}
-                      </Text>
-                    </View>
-                  </View>
-                  <Text style={styles.yearRevenue}>
-                    Έσοδα: {year.revenue.toFixed(2)}€
-                  </Text>
-                </View>
+                <OverviewLines data={year} styles={styles} />
               </View>
             ))}
           </ScrollView>
@@ -176,23 +215,6 @@ function createStyles(scale: number, brand: BrandColors) {
       textAlign: "center",
       width: "100%",
     },
-    totalsBody: {
-      marginTop: 14,
-      gap: 6,
-      alignItems: "center",
-    },
-    totalsLine: {
-      fontSize: s(14),
-      color: brand.ink,
-      textAlign: "center",
-    },
-    totalsIncome: {
-      fontSize: s(15),
-      fontWeight: "700",
-      color: brand.primary,
-      marginTop: 4,
-      textAlign: "center",
-    },
     yearCard: {
       backgroundColor: brand.sand,
       borderRadius: 14,
@@ -207,46 +229,42 @@ function createStyles(scale: number, brand: BrandColors) {
       color: brand.ink,
       textAlign: "center",
       width: "100%",
+      marginBottom: 10,
     },
-    yearBody: {
-      marginTop: 14,
-      gap: 10,
-    },
-    statsRow: {
-      flexDirection: "row",
-      gap: 8,
-    },
-    statItem: {
-      flex: 1,
-      backgroundColor: brand.white,
-      borderRadius: 10,
-      paddingVertical: 10,
+    linesBlock: {
+      marginTop: 10,
+      gap: 6,
       alignItems: "center",
-      borderWidth: 1,
-      borderColor: brand.sandDeep,
     },
-    statLabel: {
-      fontSize: s(11),
-      color: brand.claySoft,
-      marginBottom: 4,
-      textAlign: "center",
-    },
-    statValue: {
-      fontSize: s(15),
-      fontWeight: "700",
+    line: {
+      fontSize: s(14),
       color: brand.ink,
       textAlign: "center",
     },
-    yearRevenue: {
-      fontSize: s(14),
+    incomeLine: {
+      fontSize: s(15),
       fontWeight: "700",
       color: brand.primary,
+      marginTop: 4,
+      textAlign: "center",
+    },
+    expenseLine: {
+      fontSize: s(14),
+      fontWeight: "600",
+      color: brand.danger,
+      textAlign: "center",
+    },
+    netLine: {
+      fontSize: s(14),
+      fontWeight: "700",
+      color: brand.ink,
+      marginTop: 8,
       textAlign: "center",
     },
     closeBtn: {
       borderWidth: 1,
       borderColor: brand.sandDeep,
-      borderRadius: 14,
+      borderRadius: 8,
       paddingVertical: 14,
       alignItems: "center",
     },

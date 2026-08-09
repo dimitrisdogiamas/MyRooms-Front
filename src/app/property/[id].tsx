@@ -38,7 +38,7 @@ import {
 import { Calendar } from "react-native-calendars";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-type DayMarkKind = "stay" | "departure" | "split" | "selected";
+type DayMarkKind = "stay" | "arrival" | "departure" | "split" | "selected";
 
 type RoomAvailability = {
   [dateString: string]: {
@@ -96,13 +96,14 @@ function buildAvailabilityFromBookings(
 
     let current = booking.start_date;
     while (current <= booking.end_date) {
+      const isStart = current === booking.start_date;
       const isEnd = current === booking.end_date;
       result[booking.room_id][current] = {
         color: isEnd ? brand.calendarTurnover : brand.calendarBlue,
         textColor: brand.white,
-        startingDay: current === booking.start_date,
+        startingDay: isStart,
         endingDay: isEnd,
-        kind: isEnd ? "departure" : "stay",
+        kind: isEnd ? "departure" : isStart ? "arrival" : "stay",
       };
       current = addDays(current, 1);
     }
@@ -829,28 +830,35 @@ export default function PropertyScreen() {
                         state === "disabled" || state === "inactive";
                       const kind = mark?.kind;
                       const isSplit = kind === "split";
+                      const isDeparture = kind === "departure";
+                      const isArrival = kind === "arrival";
                       const bg =
-                        !isSplit && typeof mark?.color === "string"
+                        kind === "stay" && typeof mark?.color === "string"
                           ? mark.color
                           : undefined;
-                      const onColored = Boolean(bg) || isSplit;
-                      const textColor = onColored
-                        ? brand.white
-                        : isOutsideMonth
-                          ? brand.claySoft
-                          : state === "today"
-                            ? brand.primary
-                            : brand.ink;
+                      const onStay = Boolean(bg);
+                      const textColor =
+                        isSplit || onStay
+                          ? brand.white
+                          : isOutsideMonth
+                            ? brand.claySoft
+                            : state === "today"
+                              ? brand.primary
+                              : brand.ink;
 
                       return (
                         <Pressable
                           style={[
                             styles.dayCell,
-                            !onColored && styles.dayCellIdle,
+                            (isDeparture ||
+                              isArrival ||
+                              (!onStay && !isSplit)) &&
+                              styles.dayCellIdle,
                             bg ? { backgroundColor: bg } : null,
                             mark?.selected && styles.dayCellSelected,
                             isOutsideMonth &&
-                              !onColored &&
+                              !onStay &&
+                              !isSplit &&
                               styles.dayCellOutside,
                           ]}
                           onPress={() => handleDayPress(room, date.dateString)}
@@ -869,6 +877,12 @@ export default function PropertyScreen() {
                               <View style={styles.daySplitTriangle} />
                             </>
                           ) : null}
+                          {isDeparture ? (
+                            <View style={styles.daySplitTriangle} />
+                          ) : null}
+                          {isArrival ? (
+                            <View style={styles.dayArrivalTriangle} />
+                          ) : null}
                           <Text
                             style={[styles.dayNumber, { color: textColor }]}
                           >
@@ -878,7 +892,10 @@ export default function PropertyScreen() {
                             style={[
                               styles.dayPrice,
                               {
-                                color: onColored ? brand.white : brand.claySoft,
+                                color:
+                                  isSplit || onStay
+                                    ? brand.white
+                                    : brand.claySoft,
                               },
                             ]}
                           >
@@ -902,6 +919,13 @@ export default function PropertyScreen() {
                     <View style={styles.legendItem}>
                       <View style={styles.dotSplit}>
                         <View style={styles.dotSplitSand} />
+                        <View style={styles.dotArrivalTeal} />
+                      </View>
+                      <Text style={styles.legendText}>Άφιξη</Text>
+                    </View>
+                    <View style={styles.legendItem}>
+                      <View style={styles.dotSplit}>
+                        <View style={styles.dotSplitSand} />
                         <View style={styles.dotSplitOrange} />
                       </View>
                       <Text style={styles.legendText}>Αναχώρηση</Text>
@@ -911,7 +935,7 @@ export default function PropertyScreen() {
                         <View style={styles.dotSplitTeal} />
                         <View style={styles.dotSplitOrange} />
                       </View>
-                      <Text style={styles.legendText}>Αναχώρηση & άφιξη</Text>
+                      <Text style={styles.legendText}>Αφίξη & Αναχώρηση</Text>
                     </View>
                   </View>
 
@@ -952,6 +976,9 @@ export default function PropertyScreen() {
 
       <PropertyOverviewModal
         visible={propertyYear}
+        propertyId={
+          Array.isArray(propertyId) ? propertyId[0] : (propertyId ?? "")
+        }
         propertyName={propertyName}
         bookings={bookings}
         rooms={rooms}
@@ -1570,26 +1597,33 @@ function createStyles(scale: number, brand: BrandColors) {
     },
     legend: {
       flexDirection: "row",
-      flexWrap: "wrap",
-      gap: 12,
+      flexWrap: "nowrap",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: 4,
       marginTop: 6,
       marginBottom: 2,
+      width: daySize * 7 + weekGap * 6,
+      alignSelf: "center",
     },
     legendItem: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 6,
+      gap: 4,
+      flexShrink: 1,
     },
     dot: {
       width: 10,
       height: 10,
       borderRadius: 3,
+      flexShrink: 0,
     },
     dotSplit: {
       width: 10,
       height: 10,
       borderRadius: 3,
       overflow: "hidden",
+      flexShrink: 0,
     },
     dotSplitTeal: {
       ...StyleSheet.absoluteFill,
@@ -1610,9 +1644,21 @@ function createStyles(scale: number, brand: BrandColors) {
       borderTopColor: brand.calendarTurnover,
       borderRightColor: "transparent",
     },
+    dotArrivalTeal: {
+      position: "absolute",
+      bottom: 0,
+      right: 0,
+      width: 0,
+      height: 0,
+      borderBottomWidth: 10,
+      borderLeftWidth: 10,
+      borderBottomColor: brand.calendarBlue,
+      borderLeftColor: "transparent",
+    },
     legendText: {
-      fontSize: s(11),
+      fontSize: s(10),
       color: brand.claySoft,
+      flexShrink: 1,
     },
     calendar: {
       alignSelf: "center",
@@ -1791,6 +1837,17 @@ function createStyles(scale: number, brand: BrandColors) {
       borderRightWidth: daySize,
       borderTopColor: brand.calendarTurnover,
       borderRightColor: "transparent",
+    },
+    dayArrivalTriangle: {
+      position: "absolute",
+      bottom: 0,
+      right: 0,
+      width: 0,
+      height: 0,
+      borderBottomWidth: daySize,
+      borderLeftWidth: daySize,
+      borderBottomColor: brand.calendarBlue,
+      borderLeftColor: "transparent",
     },
     dayNumber: {
       fontSize: s(12),
