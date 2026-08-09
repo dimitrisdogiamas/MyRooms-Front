@@ -37,33 +37,54 @@ type PropertyOverviewModalProps = {
 function OverviewLines({
   data,
   styles,
+  compact = false,
+  alignLeft = false,
 }: {
   data: Pick<
     PropertyYearOverview,
     | "adults"
     | "children"
     | "bookings"
+    | "occupiedNights"
     | "pricedNights"
     | "zeroPriceNights"
     | "revenue"
     | "expenses"
   >;
   styles: ReturnType<typeof createStyles>;
+  compact?: boolean;
+  alignLeft?: boolean;
 }) {
+  const align = alignLeft ? styles.alignLeft : null;
+
   return (
-    <View style={styles.linesBlock}>
-      <Text style={styles.line}>
-        Άτομα: {data.adults} ενήλικες + {data.children} παιδιά
+    <View style={[styles.linesBlock, alignLeft && styles.linesBlockLeft]}>
+      <Text style={[styles.line, align]}>Κρατήσεις: {data.bookings}</Text>
+      <Text style={[styles.line, align]}>
+        Ημέρες κράτησης: {data.occupiedNights}
       </Text>
-      <Text style={styles.line}>Κρατήσεις: {data.bookings}</Text>
-      <Text style={styles.line}>
-        Κοστολογημένες ημέρες κράτησης: {data.pricedNights}
-      </Text>
-      <Text style={styles.line}>
-        Μηδενικές ημέρες κράτησης: {data.zeroPriceNights}
-      </Text>
-      <Text style={styles.incomeLine}>Έσοδα: {data.revenue.toFixed(2)}€</Text>
-      <Text style={styles.expenseLine}>Έξοδα: {data.expenses.toFixed(2)}€</Text>
+
+      {!compact ? (
+        <View
+          style={[styles.secondaryBlock, alignLeft && styles.secondaryBlockLeft]}
+        >
+          <Text style={[styles.line, align]}>
+            Άτομα: {data.adults} ενήλικες + {data.children} παιδιά
+          </Text>
+          <Text style={[styles.line, align]}>
+            Κοστολογημένες ημέρες κράτησης: {data.pricedNights}
+          </Text>
+          <Text style={[styles.line, align]}>
+            Μηδενικές ημέρες κράτησης: {data.zeroPriceNights}
+          </Text>
+          <Text style={[styles.incomeLine, align]}>
+            Έσοδα: {data.revenue.toFixed(2)}€
+          </Text>
+          <Text style={[styles.expenseLine, align]}>
+            Έξοδα: {data.expenses.toFixed(2)}€
+          </Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -131,10 +152,17 @@ export function PropertyOverviewModal({
               <Text style={styles.subtitle}>{propertyName}</Text>
             </View>
 
+            {overview.years.map((year) => (
+              <View key={year.year} style={styles.yearCard}>
+                <Text style={styles.yearTitle}>{year.year}</Text>
+                <OverviewLines data={year} styles={styles} compact />
+              </View>
+            ))}
+
             <View style={styles.totalsCard}>
-              <Text style={styles.totalsTitle}>Σύνολο</Text>
-              <OverviewLines data={overview.totals} styles={styles} />
-              <Text style={styles.netLine}>
+              <Text style={[styles.totalsTitle, styles.alignLeft]}>Σύνολο</Text>
+              <OverviewLines data={overview.totals} styles={styles} alignLeft />
+              <Text style={[styles.netLine, styles.alignLeft]}>
                 Καθαρά:{" "}
                 {(overview.totals.revenue - overview.totals.expenses).toFixed(
                   2,
@@ -142,13 +170,6 @@ export function PropertyOverviewModal({
                 €
               </Text>
             </View>
-
-            {overview.years.map((year) => (
-              <View key={year.year} style={styles.yearCard}>
-                <Text style={styles.yearTitle}>{year.year}</Text>
-                <OverviewLines data={year} styles={styles} />
-              </View>
-            ))}
           </ScrollView>
 
           <Pressable style={styles.closeBtn} onPress={onClose}>
@@ -235,6 +256,26 @@ function createStyles(scale: number, brand: BrandColors) {
       marginTop: 10,
       gap: 6,
       alignItems: "center",
+    },
+    linesBlockLeft: {
+      alignItems: "flex-start",
+    },
+    secondaryBlock: {
+      marginTop: 10,
+      gap: 6,
+      alignItems: "center",
+      width: "100%",
+      paddingTop: 10,
+      borderTopWidth: 1,
+      borderTopColor: brand.sandDeep,
+    },
+    secondaryBlockLeft: {
+      alignItems: "flex-start",
+      borderTopColor: brand.sand,
+    },
+    alignLeft: {
+      textAlign: "left",
+      alignSelf: "stretch",
     },
     line: {
       fontSize: s(14),
