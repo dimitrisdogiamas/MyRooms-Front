@@ -2,7 +2,6 @@ import { Booking, BookingsList } from "@/components/BookingsList";
 import { BookingInfoModal } from "@/components/BookingInfoModal";
 import { ExpensesProp } from "@/components/ExpensesProp";
 import { PropertyOverviewModal } from "@/components/PropertyOverviewModal";
-import { RoomPlate } from "@/components/RoomPlate";
 import RoomsSelector, { Room } from "@/components/RoomsSelector";
 import { YearOverviewModal } from "@/components/YearOverviewModal";
 import { Fonts, type BrandColors } from "@/constants/theme";
@@ -10,9 +9,12 @@ import { useSettings } from "@/context/SettingsProvider";
 import { useBrand } from "@/hooks/use-brand";
 import { addDays } from "@/lib/bookingInsights";
 import {
+  applyRoomPriceRange,
+  bookingHasMissingPrices,
   getBookingIncome,
   getPriceForNight,
   getRoomIncome,
+  upsertRoomPriceForStay,
   type RoomPricing,
 } from "@/lib/roomPricing";
 import { supabase } from "@/lib/supabase";
@@ -154,6 +156,9 @@ export default function PropertyScreen() {
   );
   const [bookingDraft, setBookingDraft] = useState<BookingDraft | null>(null);
   const [guestName, setGuestName] = useState("");
+  const [adults, setAdults] = useState(2);
+  const [children, setChildren] = useState(2);
+  const [bookingPrice, setBookingPrice] = useState("");
   const [notifyArrival, setNotifyArrival] = useState(true);
   const [notifyDeparture, setNotifyDeparture] = useState(true);
   const [savingBooking, setSavingBooking] = useState(false);
@@ -217,7 +222,9 @@ export default function PropertyScreen() {
     const [bookingsRes, pricesRes] = await Promise.all([
       supabase
         .from("bookings")
-        .select("id, room_id, start_date, end_date, departure_note, guest_name")
+        .select(
+          "id, room_id, start_date, end_date, departure_note, guest_name, adults, children",
+        )
         .in("room_id", roomIds)
         .order("start_date", { ascending: true }),
       supabase
@@ -227,12 +234,24 @@ export default function PropertyScreen() {
         .order("start_date", { ascending: true }),
     ]);
 
-    if (bookingsRes.error) {
-      console.error("Error fetching bookings:", bookingsRes.error);
+    let bookingsData: Booking[] | null = (bookingsRes.data as Booking[] | null) ?? null;
+    let bookingsError = bookingsRes.error;
+    if (bookingsError) {
+      const fallbackBookings = await supabase
+        .from("bookings")
+        .select("id, room_id, start_date, end_date, departure_note, guest_name")
+        .in("room_id", roomIds)
+        .order("start_date", { ascending: true });
+      bookingsData = (fallbackBookings.data as Booking[] | null) ?? null;
+      bookingsError = fallbackBookings.error;
+    }
+
+    if (bookingsError) {
+      console.error("Error fetching bookings:", bookingsError);
       setBookings([]);
       setRoomAvailability({});
     } else {
-      const nextBookings = bookingsRes.data ?? [];
+      const nextBookings = bookingsData ?? [];
       setBookings(nextBookings);
       setRoomAvailability(buildAvailabilityFromBookings(nextBookings, brand));
     }
@@ -408,21 +427,30 @@ export default function PropertyScreen() {
     }
 
     setSavingPrice(true);
-    const { error } = await supabase.from("rooms_prices").insert([
-      {
-        room_id: pricingRoom.id,
-        start_date: start,
-        end_date: end,
-        price_per_night: amount,
-      },
-    ]);
-    setSavingPrice(false);
-
-    if (error) {
-      console.error(error);
-      Alert.alert("Σφάλμα", "Αποτυχία προσθήκης τιμής");
+    try {
+      await applyRoomPriceRange(
+        pricingRoom.id,
+        start,
+        end,
+        amount,
+        { protectBookingNights: true },
+      );
+    } catch (err) {
+      setSavingPrice(false);
+      console.error(err);
+      const message =
+        err &&
+        typeof err === "object" &&
+        "message" in err &&
+        typeof (err as { message: unknown }).message === "string"
+          ? (err as { message: string }).message
+          : err instanceof Error
+            ? err.message
+            : "Αποτυχία προσθήκης τιμής";
+      Alert.alert("Σφάλμα", message);
       return;
     }
+    setSavingPrice(false);
 
     setPriceStart("");
     setPriceEnd("");
@@ -496,6 +524,9 @@ export default function PropertyScreen() {
 
     setSelectStartByRoom((prev) => ({ ...prev, [room.id]: null }));
     setGuestName("");
+    setAdults(2);
+    setChildren(2);
+    setBookingPrice("");
     setNotifyArrival(true);
     setNotifyDeparture(true);
     setBookingDraft({
@@ -507,6 +538,23 @@ export default function PropertyScreen() {
 
   async function confirmBooking() {
     if (!bookingDraft || savingBooking) return;
+
+    const draftBooking = {
+      id: "draft",
+      room_id: bookingDraft.room.id,
+      start_date: bookingDraft.startDate,
+      end_date: bookingDraft.endDate,
+    };
+    const parsedPrice = Number.parseFloat(bookingPrice.replace(",", "."));
+    const hasUserPrice = Number.isFinite(parsedPrice) && parsedPrice > 0;
+
+    if (bookingHasMissingPrices(draftBooking, roomPrices) && !hasUserPrice) {
+      Alert.alert(
+        "Σφάλμα",
+        "Συμπλήρωσε τιμή ανά διανυκτέρευση για τις νύχτες χωρίς τιμή.",
+      );
+      return;
+    }
 
     setSavingBooking(true);
     const base = {
@@ -521,12 +569,55 @@ export default function PropertyScreen() {
         guest_name: guestName.trim() || null,
         notify_arrival: notifyArrival,
         notify_departure: notifyDeparture,
+        adults,
+        children,
       },
     ]);
 
     if (error) {
-      const fallback = await supabase.from("bookings").insert([base]);
-      error = fallback.error;
+      const withoutGuests = await supabase.from("bookings").insert([
+        {
+          ...base,
+          guest_name: guestName.trim() || null,
+          notify_arrival: notifyArrival,
+          notify_departure: notifyDeparture,
+        },
+      ]);
+      error = withoutGuests.error;
+      if (error) {
+        const fallback = await supabase.from("bookings").insert([base]);
+        error = fallback.error;
+      }
+    }
+
+    if (!error && hasUserPrice) {
+      try {
+        await upsertRoomPriceForStay(
+          bookingDraft.room.id,
+          bookingDraft.startDate,
+          bookingDraft.endDate,
+          parsedPrice,
+        );
+      } catch (priceErr) {
+        setSavingBooking(false);
+        const priceMessage =
+          priceErr &&
+          typeof priceErr === "object" &&
+          "message" in priceErr &&
+          typeof (priceErr as { message: unknown }).message === "string"
+            ? (priceErr as { message: string }).message
+            : priceErr instanceof Error
+              ? priceErr.message
+              : String(priceErr);
+        Alert.alert(
+          "Σφάλμα",
+          "Η κράτηση αποθηκεύτηκε, αλλά απέτυχε η ενημέρωση τιμής: " +
+            priceMessage,
+        );
+        closeBookingDraft();
+        setRefreshKey((prev) => prev + 1);
+        return;
+      }
     }
 
     setSavingBooking(false);
@@ -536,13 +627,16 @@ export default function PropertyScreen() {
       return;
     }
 
-    setBookingDraft(null);
+    closeBookingDraft();
     setRefreshKey((prev) => prev + 1);
   }
 
   function closeBookingDraft() {
     setBookingDraft(null);
     setGuestName("");
+    setAdults(2);
+    setChildren(2);
+    setBookingPrice("");
     setNotifyArrival(true);
     setNotifyDeparture(true);
   }
@@ -597,7 +691,7 @@ export default function PropertyScreen() {
         flexDirection: "row" as const,
         gap: 3,
         marginTop: 0,
-        marginBottom: 3,
+        marginBottom: 6,
       },
       dayHeader: {
         flex: 1,
@@ -615,7 +709,10 @@ export default function PropertyScreen() {
     <View style={styles.root}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <SafeAreaView style={styles.safe} edges={["top", "bottom", "left", "right"]}>
+      <SafeAreaView
+        style={styles.safe}
+        edges={["top", "bottom", "left", "right"]}
+      >
         <View style={styles.propertyHeader}>
           <View style={styles.propertyHeaderTop}>
             <Pressable
@@ -657,9 +754,7 @@ export default function PropertyScreen() {
             />
             <Pressable
               style={styles.expensesBtn}
-              onPress={() =>
-                setShowExpenses(true)
-              }
+              onPress={() => setShowExpenses(true)}
             >
               <Text style={styles.expensesBtnText}>Έξοδα</Text>
             </Pressable>
@@ -714,7 +809,7 @@ export default function PropertyScreen() {
                     theme={calendarTheme}
                     enableSwipeMonths
                     hideExtraDays={false}
-                    showSixWeeks
+                    showSixWeeks={true}
                     firstDay={1}
                     markedDates={markedDatesForRoom(room.id)}
                     dayComponent={({ date, state, marking }) => {
@@ -966,17 +1061,47 @@ export default function PropertyScreen() {
             <Text style={styles.bookingModalTitle}>Νέα κράτηση</Text>
             {bookingDraft ? (
               <>
-                <RoomPlate label={bookingDraft.room.name} compact />
                 <Text style={styles.bookingModalDates}>
+                  {bookingDraft.room.name} ·{" "}
                   {formatDisplayDate(bookingDraft.startDate)} →{" "}
                   {formatDisplayDate(bookingDraft.endDate)} ·{" "}
                   {countNights(bookingDraft.startDate, bookingDraft.endDate)}{" "}
                   διανυκτ.
                 </Text>
+
                 <Text style={styles.bookingModalCost}>
                   Εκτιμώμενο κόστος:{" "}
                   <Text style={styles.bookingModalCostValue}>
-                    {getBookingIncome(
+                    {(() => {
+                      const nights = countNights(
+                        bookingDraft.startDate,
+                        bookingDraft.endDate,
+                      );
+                      const parsed = Number.parseFloat(
+                        bookingPrice.replace(",", "."),
+                      );
+                      if (Number.isFinite(parsed) && parsed > 0) {
+                        return (parsed * nights).toFixed(2);
+                      }
+                      return getBookingIncome(
+                        {
+                          id: "draft",
+                          room_id: bookingDraft.room.id,
+                          start_date: bookingDraft.startDate,
+                          end_date: bookingDraft.endDate,
+                        },
+                        roomPrices,
+                      ).toFixed(2);
+                    })()}
+                    €
+                  </Text>
+                  {(() => {
+                    const parsed = Number.parseFloat(
+                      bookingPrice.replace(",", "."),
+                    );
+                    const hasPrice =
+                      Number.isFinite(parsed) && parsed > 0;
+                    const missing = bookingHasMissingPrices(
                       {
                         id: "draft",
                         room_id: bookingDraft.room.id,
@@ -984,9 +1109,15 @@ export default function PropertyScreen() {
                         end_date: bookingDraft.endDate,
                       },
                       roomPrices,
-                    ).toFixed(2)}
-                    €
-                  </Text>
+                    );
+                    if (!missing || hasPrice) return null;
+                    return (
+                      <Text style={styles.bookingMissingPriceHint}>
+                        {" "}
+                        (υπάρχουν μέρες χωρίς ορισμένη τιμή)
+                      </Text>
+                    );
+                  })()}
                 </Text>
 
                 <TextInput
@@ -996,6 +1127,68 @@ export default function PropertyScreen() {
                   value={guestName}
                   onChangeText={setGuestName}
                 />
+
+                <View style={[styles.guestsBox, styles.guestsRow]}>
+                  <View style={styles.guestStepper}>
+                    <Text style={[styles.stepperLabel, styles.guestStepperLabel]}>
+                      Ενήλικες
+                    </Text>
+                    <View style={styles.stepperControls}>
+                      <Pressable
+                        style={styles.stepperBtn}
+                        onPress={() => setAdults((v) => Math.max(1, v - 1))}
+                      >
+                        <Text style={styles.stepperBtnText}>−</Text>
+                      </Pressable>
+                      <Text style={styles.stepperValue}>{adults}</Text>
+                      <Pressable
+                        style={styles.stepperBtn}
+                        onPress={() => setAdults((v) => Math.min(4, v + 1))}
+                      >
+                        <Text style={styles.stepperBtnText}>+</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+
+                  <View style={styles.guestStepper}>
+                    <Text style={[styles.stepperLabel, styles.guestStepperLabel]}>
+                      Παιδιά
+                    </Text>
+                    <View style={styles.stepperControls}>
+                      <Pressable
+                        style={styles.stepperBtn}
+                        onPress={() => setChildren((v) => Math.max(0, v - 1))}
+                      >
+                        <Text style={styles.stepperBtnText}>−</Text>
+                      </Pressable>
+                      <Text style={styles.stepperValue}>{children}</Text>
+                      <Pressable
+                        style={styles.stepperBtn}
+                        onPress={() => setChildren((v) => Math.min(4, v + 1))}
+                      >
+                        <Text style={styles.stepperBtnText}>+</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={styles.bookingPriceBox}>
+                  <Text style={styles.bookingPriceLabel}>
+                    Κόστος διανυκτέρευσης (€)
+                  </Text>
+                  <TextInput
+                    style={styles.bookingGuestInput}
+                    placeholder="π.χ. 55"
+                    placeholderTextColor={brand.claySoft}
+                    value={bookingPrice}
+                    onChangeText={setBookingPrice}
+                    keyboardType="decimal-pad"
+                  />
+                  <Text style={styles.bookingPriceHint}>
+                    Αν το συμπληρώσετε, υπερισχύει των οριζόμενων τιμών και αυτό
+                    θα υπολογίζεται στα έσοδα.
+                  </Text>
+                </View>
 
                 <Pressable
                   style={styles.checkboxRow}
@@ -1437,7 +1630,8 @@ function createStyles(scale: number, brand: BrandColors) {
     },
     modalPanel: {
       backgroundColor: brand.white,
-      borderRadius: 24,
+      borderRadius: 8,
+      overflow: "hidden",
       padding: 22,
       gap: 12,
     },
@@ -1478,7 +1672,7 @@ function createStyles(scale: number, brand: BrandColors) {
     modalConfirm: {
       marginTop: 4,
       paddingVertical: 14,
-      borderRadius: 14,
+      borderRadius: 8,
       backgroundColor: brand.primary,
       alignItems: "center",
     },
@@ -1489,7 +1683,7 @@ function createStyles(scale: number, brand: BrandColors) {
     },
     modalCancel: {
       paddingVertical: 14,
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: brand.sandDeep,
       alignItems: "center",
@@ -1612,11 +1806,13 @@ function createStyles(scale: number, brand: BrandColors) {
     },
     bookingModalPanel: {
       backgroundColor: brand.white,
-      borderRadius: 20,
+      borderRadius: 8,
+      overflow: "hidden",
       padding: 22,
       gap: 12,
     },
     bookingModalTitle: {
+      textAlign: "center",
       fontSize: s(24),
       fontWeight: "700",
       color: brand.ink,
@@ -1633,6 +1829,87 @@ function createStyles(scale: number, brand: BrandColors) {
     },
     bookingModalCostValue: {
       fontWeight: "700",
+    },
+    bookingMissingPriceHint: {
+      color: brand.danger,
+      fontSize: s(13),
+      fontWeight: "600",
+    },
+    guestsBox: {
+      backgroundColor: brand.sand,
+      borderRadius: 12,
+      padding: 12,
+      borderWidth: 1,
+      borderColor: brand.sandDeep,
+    },
+    guestsRow: {
+      flexDirection: "row",
+      gap: 12,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    guestStepper: {
+      flex: 1,
+      gap: 8,
+      alignItems: "center",
+    },
+    guestStepperLabel: {
+      textAlign: "center",
+    },
+    bookingPriceBox: {
+      backgroundColor: brand.sandDeep,
+      borderRadius: 12,
+      padding: 12,
+      gap: 8,
+    },
+    bookingPriceLabel: {
+      fontSize: s(13),
+      color: brand.ink,
+      fontWeight: "600",
+    },
+    bookingPriceHint: {
+      fontSize: s(12),
+      color: brand.claySoft,
+      lineHeight: s(16),
+    },
+    stepperRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingVertical: 2,
+    },
+    stepperLabel: {
+      fontSize: s(14),
+      color: brand.ink,
+      fontWeight: "600",
+    },
+    stepperControls: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    stepperBtn: {
+      width: 34,
+      height: 34,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: brand.sandDeep,
+      backgroundColor: brand.white,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    stepperBtnText: {
+      fontSize: s(18),
+      color: brand.ink,
+      fontWeight: "600",
+      lineHeight: s(20),
+    },
+    stepperValue: {
+      minWidth: 24,
+      textAlign: "center",
+      fontSize: s(16),
+      fontWeight: "700",
+      color: brand.ink,
     },
     bookingGuestInput: {
       borderWidth: 1,
@@ -1683,7 +1960,7 @@ function createStyles(scale: number, brand: BrandColors) {
     bookingCancelBtn: {
       borderWidth: 1,
       borderColor: brand.sandDeep,
-      borderRadius: 20,
+      borderRadius: 8,
       paddingHorizontal: 18,
       paddingVertical: 10,
       backgroundColor: brand.white,
@@ -1694,7 +1971,7 @@ function createStyles(scale: number, brand: BrandColors) {
     },
     bookingSaveBtn: {
       backgroundColor: brand.calendarBlue,
-      borderRadius: 20,
+      borderRadius: 8,
       paddingHorizontal: 18,
       paddingVertical: 10,
     },
@@ -1702,7 +1979,7 @@ function createStyles(scale: number, brand: BrandColors) {
       alignItems: "center",
       textAlign: "center",
       backgroundColor: brand.primary,
-      borderRadius: 20,
+      borderRadius: 8,
       paddingHorizontal: 18,
       paddingVertical: 10,
     },
