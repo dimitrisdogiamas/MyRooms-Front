@@ -11,6 +11,7 @@ import { addDays } from "@/lib/bookingInsights";
 import {
   applyRoomPriceRange,
   bookingHasMissingPrices,
+  deleteRoomPriceProtectingBookings,
   getBookingIncome,
   getPriceForNight,
   getRoomIncome,
@@ -460,14 +461,18 @@ export default function PropertyScreen() {
   }
 
   async function deleteRoomPrice(priceId: string) {
-    const { error } = await supabase
-      .from("rooms_prices")
-      .delete()
-      .eq("id", priceId);
-
-    if (error) {
-      console.error(error);
-      Alert.alert("Σφάλμα", "Αποτυχία διαγραφής τιμής");
+    try {
+      await deleteRoomPriceProtectingBookings(priceId);
+    } catch (err) {
+      console.error(err);
+      const message =
+        err &&
+        typeof err === "object" &&
+        "message" in err &&
+        typeof (err as { message: unknown }).message === "string"
+          ? (err as { message: string }).message
+          : "Αποτυχία διαγραφής τιμής";
+      Alert.alert("Σφάλμα", message);
       return;
     }
 

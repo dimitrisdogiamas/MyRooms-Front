@@ -296,3 +296,85 @@ export async function upsertRoomPriceForStay(
     protectBookingNights: false,
   });
 }
+
+/**
+ * Deletes a rooms_prices row, but keeps the price on nights that belong to
+ * existing bookings (so clearing a season range doesn't wipe booking prices).
+ */
+export async function deleteRoomPriceProtectingBookings(
+  priceId: string,
+): Promise<void> {
+  const { data: row, error: fetchError } = await supabase
+    .from("rooms_prices")
+    .select("id, room_id, start_date, end_date, price_per_night")
+    .eq("id", priceId)
+    .maybeSingle();
+
+  if (fetchError) throw fetchError;
+  if (!row) return;
+
+  const roomId = row.room_id as string;
+  const start = toDateOnly(String(row.start_date));
+  const end = toDateOnly(String(row.end_date));
+  const price = Number(row.price_per_night);
+
+  const { data: bookings, error: bookingsError } = await supabase
+    .from("bookings")
+    .select("start_date, end_date")
+    .eq("room_id", roomId)
+    .lt("start_date", addDays(end, 1))
+    .gt("end_date", start);
+
+  if (bookingsError) throw bookingsError;
+
+  const keepDays = new Map<string, number>();
+  for (const booking of bookings ?? []) {
+    let day = toDateOnly(String(booking.start_date));
+    const checkout = toDateOnly(String(booking.end_date));
+    while (day < checkout) {
+      if (day >= start && day <= end && price > 0) {
+        keepDays.set(day, price);
+      }
+      day = addDays(day, 1);
+    }
+  }
+
+  const { error: deleteError } = await supabase
+    .from("rooms_prices")
+    .delete()
+    .eq("id", priceId);
+  if (deleteError) throw deleteError;
+
+  if (keepDays.size === 0) return;
+
+  const { data: remaining, error: remainingError } = await supabase
+    .from("rooms_prices")
+    .select("id, room_id, start_date, end_date, price_per_night")
+    .eq("room_id", roomId)
+    .lte("start_date", end)
+    .gte("end_date", start);
+
+  if (remainingError) throw remainingError;
+
+  const remainingRows = (remaining ?? []).map((r) => ({
+    id: r.id as string,
+    room_id: roomId,
+    start_date: toDateOnly(String(r.start_date)),
+    end_date: toDateOnly(String(r.end_date)),
+    price_per_night: Number(r.price_per_night),
+  }));
+
+  const toRestore = new Map<string, number>();
+  for (const [day, nightPrice] of keepDays) {
+    if (getPriceForNight(remainingRows, roomId, day) <= 0) {
+      toRestore.set(day, nightPrice);
+    }
+  }
+
+  if (toRestore.size === 0) return;
+
+  const { error: insertError } = await supabase
+    .from("rooms_prices")
+    .insert(collapseDayPrices(roomId, toRestore));
+  if (insertError) throw insertError;
+}
