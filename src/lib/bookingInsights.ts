@@ -4,6 +4,8 @@ export type Booking = {
   start_date: string,
   end_date: string,
   departure_note?: string | null,
+  adults?: number,
+  children?: number,
 }
 
 

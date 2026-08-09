@@ -21,6 +21,8 @@ export type Booking = {
   guest_name?: string | null;
   /** Σημείωση αναχώρησης / πρόωρης εξόδου */
   departure_note?: string | null;
+  adults?: number | null;
+  children?: number | null;
 };
 
 export type BookingsListProps = {
