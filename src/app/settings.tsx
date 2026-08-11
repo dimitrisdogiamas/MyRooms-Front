@@ -3,6 +3,7 @@ import { fontOptions, fs } from "@/lib/typography";
 import { useMemo } from "react";
 import { useSettings } from "@/context/SettingsProvider";
 import { useBrand } from "@/hooks/use-brand";
+import * as LocalAuthentication from "expo-local-authentication";
 import { Alert, Pressable,
   ScrollView,
   StyleSheet,
@@ -86,6 +87,48 @@ export default function SettingsScreen() {
               </Pressable>
             ))}
           </View>
+        </View>
+
+        <View style={styles.card}>
+          <View style={styles.row}>
+          <Text style={styles.rowLabel}>Ξεκλείδωμα Με Βιομετρικά</Text>
+          <Switch
+            value={settings.biometricLock}
+              onValueChange={async (value) => {
+              if (!value) {
+                setSettings({ ...settings, biometricLock: value })
+                return;
+              }
+
+
+                // does hardware exist
+                const hasHardware = await LocalAuthentication.hasHardwareAsync();
+                if (!hasHardware) {
+                  Alert.alert("Error", "No hardware found");
+                  return;
+                }
+
+                // does biometric authentication exist
+                const hasBiometric = await LocalAuthentication.isEnrolledAsync();
+                if (!hasBiometric) {
+                  Alert.alert("Error", "No biometric authentication found");
+                  return;
+                }
+
+                // 3(Prompt)
+                const result = await LocalAuthentication.authenticateAsync({
+                  promptMessage: "Ενεργοποιήση βιομετρικού Ξεκλειδώματος",
+                  cancelLabel: "Ακύρωση",
+                });
+
+                if (result.success) {
+                  setSettings({ ...settings, biometricLock: true });
+                }
+              }}
+            trackColor={{ true: brand.primary, false: brand.sandDeep }}
+            />
+            </View>
+
         </View>
 
         <View style={styles.card}>

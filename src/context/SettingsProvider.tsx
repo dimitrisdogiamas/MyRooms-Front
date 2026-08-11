@@ -8,6 +8,7 @@ export type AppSettings = {
   notifyDeparture: boolean;
   minNights: number;
   compactMode: boolean;
+  biometricLock: boolean;
 };
 
 const STORAGE_KEY = "settings";
@@ -19,13 +20,18 @@ const defaultSettings: AppSettings = {
   notifyDeparture: true,
   minNights: 1,
   compactMode: false,
+  biometricLock: false,
 };
 
-const SettingsContext = createContext<{
-  settings: AppSettings;
-  setSettings: (settings: AppSettings) => void;
-  saveSettings: () => Promise<void>;
-} | undefined>(undefined);
+const SettingsContext = createContext<
+  | {
+      settings: AppSettings;
+      ready: boolean;
+      setSettings: (settings: AppSettings) => void;
+      saveSettings: () => Promise<void>;
+    }
+  | undefined
+>(undefined);
 
 export function useSettings() {
   const ctx = useContext(SettingsContext);
@@ -35,6 +41,7 @@ export function useSettings() {
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettingsState] = useState<AppSettings>(defaultSettings);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -45,6 +52,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         setSettingsState({ ...defaultSettings, ...parsed });
       } catch {
         // ignore corrupt storage
+      } finally {
+        setReady(true);
       }
     })();
   }, []);
@@ -59,7 +68,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   }, [settings]);
 
   return (
-    <SettingsContext.Provider value={{ settings, setSettings, saveSettings }}>
+    <SettingsContext.Provider
+      value={{ settings, ready, setSettings, saveSettings }}
+    >
       {children}
     </SettingsContext.Provider>
   );
