@@ -153,7 +153,7 @@ export function BookingInfoModal({
 
           <View style={styles.card}>
             <Text style={styles.line}>
-              Επισκέπτης: {booking.guest_name?.trim() || "—"}
+               {booking.guest_name?.trim() || "—"}
             </Text>
 
             <View style={[styles.guestsBox, styles.guestsRow]}>
@@ -162,19 +162,7 @@ export function BookingInfoModal({
                   Ενήλικες
                 </Text>
                 <View style={styles.stepperControls}>
-                  <Pressable
-                    style={styles.stepperBtn}
-                    onPress={() => setAdults((v) => Math.max(1, v - 1))}
-                  >
-                    <Text style={styles.stepperBtnText}>−</Text>
-                  </Pressable>
                   <Text style={styles.stepperValue}>{adults}</Text>
-                  <Pressable
-                    style={styles.stepperBtn}
-                    onPress={() => setAdults((v) => Math.min(4, v + 1))}
-                  >
-                    <Text style={styles.stepperBtnText}>+</Text>
-                  </Pressable>
                 </View>
               </View>
 
@@ -182,20 +170,8 @@ export function BookingInfoModal({
                 <Text style={[styles.stepperLabel, styles.guestStepperLabel]}>
                   Παιδιά
                 </Text>
-                <View style={styles.stepperControls}>
-                  <Pressable
-                    style={styles.stepperBtn}
-                    onPress={() => setChildren((v) => Math.max(0, v - 1))}
-                  >
-                    <Text style={styles.stepperBtnText}>−</Text>
-                  </Pressable>
                   <Text style={styles.stepperValue}>{children}</Text>
-                  <Pressable
-                    style={styles.stepperBtn}
-                    onPress={() => setChildren((v) => Math.min(4, v + 1))}
-                  >
-                    <Text style={styles.stepperBtnText}>+</Text>
-                  </Pressable>
+
                 </View>
               </View>
             </View>
@@ -233,8 +209,8 @@ export function BookingInfoModal({
           <Pressable style={styles.closeBtn} onPress={onClose}>
             <Text style={styles.closeText}>Κλείσιμο</Text>
           </Pressable>
+
         </View>
-      </View>
     </Modal>
   );
 }
@@ -277,10 +253,12 @@ function createStyles(scale: number, brand: BrandColors) {
       gap: 8,
     },
     line: {
+        textAlign: "center",
       fontSize: s(14),
       color: brand.ink,
     },
     cost: {
+        textAlign: "center",
       fontSize: s(16),
       fontWeight: "700",
       color: brand.primary,

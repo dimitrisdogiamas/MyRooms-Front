@@ -484,7 +484,7 @@ export default function PropertyScreen() {
     const existing = bookings.find(
       (b) =>
         b.room_id === room.id &&
-        b.start_date.slice(0, 10) <= dateString &&
+        b.start_date.slice(0, 10) < dateString &&
         b.end_date.slice(0, 10) > dateString,
     );
     if (existing) {
