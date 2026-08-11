@@ -91,7 +91,7 @@ const RoomsSelector = ({
         <View style={styles.addRow}>
           <TextInput
             style={styles.input}
-            placeholder="Ταμπέλα δωματίου (π.χ. 101)"
+            placeholder=""
             placeholderTextColor={brand.claySoft}
             value={newRoomName}
             onChangeText={setNewRoomName}
@@ -170,7 +170,7 @@ function createStyles(scale: number, brand: BrandColors) {
       paddingHorizontal: 10,
       paddingVertical: 8,
       backgroundColor: "#ffffff",
-      color: brand.ink,
+      color: brand.sandDeep,
     },
     confirmButton: {
       backgroundColor: brand.primary,
