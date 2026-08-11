@@ -152,6 +152,34 @@ export function PropertyOverviewModal({
               <Text style={styles.subtitle}>{propertyName}</Text>
             </View>
 
+
+             <View style={styles.totalsCard}>
+              <Text style={styles.totalsTitle}>Σύνολο</Text>
+
+              <View style={styles.linesBlock}>
+                <Text style={styles.line}>
+                  Άτομα: {overview.totals.adults} + {overview.totals.children}
+                </Text>
+
+                <Text style={styles.line}>
+                  Κρατήσεις: {overview.totals.bookings}
+                </Text>
+
+                <Text style={styles.line}>
+                  Ημέρες Πληρότητας: {overview.totals.occupiedNights}
+                </Text>
+
+
+                <Text style={styles.incomeLine}>
+                  Έσοδα: {overview.totals.revenue.toFixed(2)}€
+                </Text>
+
+                <Text style={styles.expenseLine}>
+                  Έξοδα: {overview.totals.expenses.toFixed(2)}€
+                </Text>
+              </View>
+            </View>
+
             {overview.years.map((year) => (
               <View key={year.year} style={styles.yearCard}>
                 <Text style={styles.yearTitle}>{year.year}</Text>
@@ -159,17 +187,7 @@ export function PropertyOverviewModal({
               </View>
             ))}
 
-            <View style={styles.totalsCard}>
-              <Text style={[styles.totalsTitle, styles.alignLeft]}>Σύνολο</Text>
-              <OverviewLines data={overview.totals} styles={styles} alignLeft />
-              <Text style={[styles.netLine, styles.alignLeft]}>
-                Καθαρά:{" "}
-                {(overview.totals.revenue - overview.totals.expenses).toFixed(
-                  2,
-                )}
-                €
-              </Text>
-            </View>
+
           </ScrollView>
 
           <Pressable style={styles.closeBtn} onPress={onClose}>
@@ -230,10 +248,11 @@ function createStyles(scale: number, brand: BrandColors) {
       gap: 0,
     },
     totalsTitle: {
+      textAlign: "center",
+      // width: "100%",
       fontSize: s(16),
       fontWeight: "700",
       color: brand.ink,
-      textAlign: "center",
       width: "100%",
     },
     yearCard: {

@@ -777,7 +777,8 @@ function createStyles(scale: number, brand: BrandColors) {
     padding: Spacing.two,
     gap: 6,
   },
-  searchTitle: {
+    searchTitle: {
+    textAlign: "center",
     fontSize: s(14),
     fontWeight: "700",
     color: brand.ink,

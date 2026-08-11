@@ -45,11 +45,12 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
       try {
-        const parsed = JSON.parse(raw) as AppSettings;
-        setSettingsState({ ...defaultSettings, ...parsed });
+        const raw = await AsyncStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw) as AppSettings;
+          setSettingsState({ ...defaultSettings, ...parsed });
+        }
       } catch {
         // ignore corrupt storage
       } finally {

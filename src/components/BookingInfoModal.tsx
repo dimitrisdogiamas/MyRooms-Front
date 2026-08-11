@@ -6,12 +6,21 @@ import { useBrand } from "@/hooks/use-brand";
 import { addDays } from "@/lib/bookingInsights";
 import { getBookingIncome, type RoomPricing } from "@/lib/roomPricing";
 import { fs } from "@/lib/typography";
-import { useMemo } from "react";
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { supabase } from "@/lib/supabase";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Alert,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 type BookingInfoModalProps = {
   visible: boolean;
   onClose: () => void;
+  onChanged?: () => void;
   booking: Booking;
   pressedDate: string;
   roomPrices: RoomPricing[];
@@ -39,6 +48,7 @@ function formatDisplayDate(iso: string): string {
 export function BookingInfoModal({
   visible,
   onClose,
+  onChanged,
   booking,
   pressedDate,
   roomPrices,
@@ -51,10 +61,83 @@ export function BookingInfoModal({
     [settings.fontScale, brand],
   );
 
+  const initialAdults = booking.adults ?? 2;
+  const initialChildren = booking.children ?? 0;
+  const [adults, setAdults] = useState(initialAdults);
+  const [children, setChildren] = useState(initialChildren);
+  const [savedAdults, setSavedAdults] = useState(initialAdults);
+  const [savedChildren, setSavedChildren] = useState(initialChildren);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    const nextAdults = booking.adults ?? 2;
+    const nextChildren = booking.children ?? 0;
+    setAdults(nextAdults);
+    setChildren(nextChildren);
+    setSavedAdults(nextAdults);
+    setSavedChildren(nextChildren);
+  }, [booking.id, booking.adults, booking.children]);
+
   const nights = countNights(booking.start_date, booking.end_date);
   const remaining = countNights(pressedDate, booking.end_date);
   const cost = getBookingIncome(booking, roomPrices);
   const roomName = rooms.find((r) => r.id === booking.room_id)?.name ?? null;
+  const guestsDirty = adults !== savedAdults || children !== savedChildren;
+
+  async function saveGuests() {
+    if (saving) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("bookings")
+      .update({ adults, children })
+      .eq("id", booking.id);
+    setSaving(false);
+
+    if (error) {
+      Alert.alert("Σφάλμα", "Αποτυχία ενημέρωσης ατόμων: " + error.message);
+      return;
+    }
+
+    setSavedAdults(adults);
+    setSavedChildren(children);
+    onChanged?.();
+  }
+
+  function confirmDelete() {
+    Alert.alert(
+      "Διαγραφή κράτησης",
+      "Να διαγραφεί οριστικά αυτή η κράτηση;",
+      [
+        { text: "Άκυρο", style: "cancel" },
+        {
+          text: "Διαγραφή",
+          style: "destructive",
+          onPress: () => {
+            void deleteBooking();
+          },
+        },
+      ],
+    );
+  }
+
+  async function deleteBooking() {
+    if (deleting) return;
+    setDeleting(true);
+    const { error } = await supabase
+      .from("bookings")
+      .delete()
+      .eq("id", booking.id);
+    setDeleting(false);
+
+    if (error) {
+      Alert.alert("Σφάλμα", "Αποτυχία διαγραφής: " + error.message);
+      return;
+    }
+
+    onChanged?.();
+    onClose();
+  }
 
   return (
     <Modal
@@ -70,21 +153,82 @@ export function BookingInfoModal({
 
           <View style={styles.card}>
             <Text style={styles.line}>
-              Ημέρα: {formatDisplayDate(pressedDate)}
-            </Text>
-            <Text style={styles.line}>
               Επισκέπτης: {booking.guest_name?.trim() || "—"}
             </Text>
+
+            <View style={[styles.guestsBox, styles.guestsRow]}>
+              <View style={styles.guestStepper}>
+                <Text style={[styles.stepperLabel, styles.guestStepperLabel]}>
+                  Ενήλικες
+                </Text>
+                <View style={styles.stepperControls}>
+                  <Pressable
+                    style={styles.stepperBtn}
+                    onPress={() => setAdults((v) => Math.max(1, v - 1))}
+                  >
+                    <Text style={styles.stepperBtnText}>−</Text>
+                  </Pressable>
+                  <Text style={styles.stepperValue}>{adults}</Text>
+                  <Pressable
+                    style={styles.stepperBtn}
+                    onPress={() => setAdults((v) => Math.min(4, v + 1))}
+                  >
+                    <Text style={styles.stepperBtnText}>+</Text>
+                  </Pressable>
+                </View>
+              </View>
+
+              <View style={styles.guestStepper}>
+                <Text style={[styles.stepperLabel, styles.guestStepperLabel]}>
+                  Παιδιά
+                </Text>
+                <View style={styles.stepperControls}>
+                  <Pressable
+                    style={styles.stepperBtn}
+                    onPress={() => setChildren((v) => Math.max(0, v - 1))}
+                  >
+                    <Text style={styles.stepperBtnText}>−</Text>
+                  </Pressable>
+                  <Text style={styles.stepperValue}>{children}</Text>
+                  <Pressable
+                    style={styles.stepperBtn}
+                    onPress={() => setChildren((v) => Math.min(4, v + 1))}
+                  >
+                    <Text style={styles.stepperBtnText}>+</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </View>
+
+            {guestsDirty ? (
+              <Pressable
+                style={[styles.saveGuestsBtn, saving && styles.btnDisabled]}
+                onPress={saveGuests}
+                disabled={saving}
+              >
+                <Text style={styles.saveGuestsText}>
+                  {saving ? "Αποθήκευση…" : "Αποθήκευση ατόμων"}
+                </Text>
+              </Pressable>
+            ) : null}
+
             <Text style={styles.line}>
               Από {formatDisplayDate(booking.start_date)} έως{" "}
               {formatDisplayDate(booking.end_date)}
             </Text>
-            <Text style={styles.line}>Διαμονή: {nights} διανυκτερεύσεις</Text>
-            <Text style={styles.line}>
-              Απομένουν: {remaining} διανυκτερεύσεις
-            </Text>
+            <Text style={styles.line}>{nights} διανυκτερεύσεις</Text>
             <Text style={styles.cost}>Κόστος: {cost.toFixed(2)}€</Text>
           </View>
+
+          <Pressable
+            style={[styles.deleteBtn, deleting && styles.btnDisabled]}
+            onPress={confirmDelete}
+            disabled={deleting}
+          >
+            <Text style={styles.deleteText}>
+              {deleting ? "Διαγραφή…" : "Διαγραφή κράτησης"}
+            </Text>
+          </Pressable>
 
           <Pressable style={styles.closeBtn} onPress={onClose}>
             <Text style={styles.closeText}>Κλείσιμο</Text>
@@ -141,6 +285,89 @@ function createStyles(scale: number, brand: BrandColors) {
       fontWeight: "700",
       color: brand.primary,
       marginTop: 4,
+    },
+    guestsBox: {
+      backgroundColor: brand.sand,
+      borderRadius: 12,
+      padding: 12,
+      borderWidth: 1,
+      borderColor: brand.sandDeep,
+      marginVertical: 4,
+    },
+    guestsRow: {
+      flexDirection: "row",
+      gap: 12,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    guestStepper: {
+      flex: 1,
+      gap: 8,
+      alignItems: "center",
+    },
+    guestStepperLabel: {
+      textAlign: "center",
+    },
+    stepperLabel: {
+      fontSize: s(14),
+      color: brand.ink,
+      fontWeight: "600",
+    },
+    stepperControls: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    stepperBtn: {
+      width: 34,
+      height: 34,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: brand.sandDeep,
+      backgroundColor: brand.white,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    stepperBtnText: {
+      fontSize: s(18),
+      color: brand.ink,
+      fontWeight: "600",
+      lineHeight: s(20),
+    },
+    stepperValue: {
+      minWidth: 24,
+      textAlign: "center",
+      fontSize: s(16),
+      fontWeight: "700",
+      color: brand.ink,
+    },
+    saveGuestsBtn: {
+      backgroundColor: brand.primary,
+      borderRadius: 12,
+      paddingVertical: 10,
+      alignItems: "center",
+      marginTop: 4,
+    },
+    saveGuestsText: {
+      color: brand.white,
+      fontWeight: "700",
+      fontSize: s(14),
+    },
+    deleteBtn: {
+      borderWidth: 1,
+      borderColor: brand.danger,
+      borderRadius: 14,
+      paddingVertical: 14,
+      alignItems: "center",
+      backgroundColor: brand.white,
+    },
+    deleteText: {
+      color: brand.danger,
+      fontWeight: "700",
+      fontSize: s(15),
+    },
+    btnDisabled: {
+      opacity: 0.6,
     },
     closeBtn: {
       borderWidth: 1,
