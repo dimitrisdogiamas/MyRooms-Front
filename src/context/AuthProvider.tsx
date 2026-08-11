@@ -1,14 +1,17 @@
-import { createContext, useCallback } from "react";
-import { useEffect, useState, useContext } from "react";
-import { supabase } from "@/lib/supabase";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { Session } from "@supabase/supabase-js";
-
+import * as LocalAuthentication from "expo-local-authentication";
+import { supabase } from "@/lib/supabase";
+import { useSettings } from "./SettingsProvider";
 
 type AuthContextType = {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  unlocked: boolean;
+  unlock: () => Promise<void>;
+  lock: () => void;
 }
 
 
@@ -23,37 +26,106 @@ export function useAuth() {
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [unlocked, setUnlocked] = useState(false);
+  const { settings, ready: settingsReady } = useSettings();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    if (!settingsReady) return;
+
+    let cancelled = false;
+
+    void (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (cancelled) return;
+
       setSession(data.session);
+      if (data.session && !settings.biometricLock) {
+        setUnlocked(true);
+      } else {
+        setUnlocked(false);
+      }
       setLoading(false);
+    })();
+
+    const { data: sub } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      setSession(nextSession);
+
+      if (event === "SIGNED_OUT" || !nextSession) {
+        setUnlocked(false);
+        return;
+      }
+
+      // Fresh password login: enter app now.
+      // Next cold start will require biometrics if enabled.
+      if (event === "SIGNED_IN") {
+        setUnlocked(true);
+      }
     });
 
-    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      setSession(session);
-    });
+    return () => {
+      cancelled = true;
+      sub.subscription.unsubscribe();
+    };
+    // Only re-run when settings finish hydrating — not when toggle changes mid-session.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settingsReady]);
 
-    return () => { sub.subscription.unsubscribe(); }
-
-
-
-
-  }, []);
-
+  // Turning biometric OFF while logged in should not trap the user.
+  useEffect(() => {
+    if (settingsReady && session && !settings.biometricLock) {
+      setUnlocked(true);
+    }
+  }, [settingsReady, session, settings.biometricLock]);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
     if (error) throw error;
   }, []);
 
   const signOut = useCallback(async () => {
     const { error } = await supabase.auth.signOut();
     setSession(null);
+    setUnlocked(false);
     if (error) throw error;
   }, []);
 
+  const unlock = useCallback(async () => {
+    const hasHardware = await LocalAuthentication.hasHardwareAsync();
+    const enrolled = await LocalAuthentication.isEnrolledAsync();
+    if (!hasHardware || !enrolled) {
+      setUnlocked(true);
+      return;
+    }
+
+    const result = await LocalAuthentication.authenticateAsync({
+      promptMessage: "Ξεκλείδωμα εφαρμογής",
+      cancelLabel: "Ακύρωση",
+    });
+    if (result.success) {
+      setUnlocked(true);
+    }
+  }, []);
+
+  const lock = useCallback(() => {
+    setUnlocked(false);
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ session, loading, signIn, signOut }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider
+      value={{
+        session,
+        loading: loading || !settingsReady,
+        signIn,
+        signOut,
+        unlocked,
+        unlock,
+        lock,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
   );
 };
