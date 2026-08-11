@@ -2,9 +2,9 @@ import { useCallback } from "react";
 import { useSettings } from "@/context/SettingsProvider";
 
 export const fontOptions = [
-  { label: "Μικρό", value: 0.8 },
-  { label: "Μεσαίο", value: 1 },
-  { label: "Μεγάλο", value: 1.2 },
+  { label: "Μικρό", value: 1 },
+  { label: "Μεσαίο", value: 1.2 },
+  { label: "Μεγάλο", value: 1.4 },
 ] as const;
 
 export function fs(base: number, scale: number) {
