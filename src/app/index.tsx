@@ -1,3 +1,4 @@
+import { DismissKeyboard } from "@/components/DismissKeyboard";
 import { ThemedText } from "@/components/themed-text";
 import { Fonts, Spacing, type BrandColors } from "@/constants/theme";
 import { type Booking,
@@ -321,6 +322,7 @@ const PropertiesList = () => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <DismissKeyboard style={styles.container}>
       <View style={styles.homeHeader}>
         <View style={styles.eyebrowRow}>
           <Pressable
@@ -373,6 +375,8 @@ const PropertiesList = () => {
         keyExtractor={(item) => item.id}
         style={styles.flatList}
         contentContainerStyle={styles.listContainer}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         ListEmptyComponent={
           <ThemedText style={styles.muted}>
             Δεν υπάρχουν ιδιοκτησίες ακόμα. Πρόσθεσε την πρώτη σου.
@@ -558,6 +562,7 @@ const PropertiesList = () => {
           </View>
         </View>
       </Modal>
+      </DismissKeyboard>
     </SafeAreaView>
   );
 };

@@ -1,5 +1,6 @@
 import { Booking, BookingsList } from "@/components/BookingsList";
 import { BookingInfoModal } from "@/components/BookingInfoModal";
+import { DismissKeyboard } from "@/components/DismissKeyboard";
 import { ExpensesProp } from "@/components/ExpensesProp";
 import { PropertyOverviewModal } from "@/components/PropertyOverviewModal";
 import RoomsSelector, { Room } from "@/components/RoomsSelector";
@@ -770,7 +771,9 @@ export default function PropertyScreen() {
         <ScrollView
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
+          <DismissKeyboard>
           {rooms.length === 0 ? (
             <View style={styles.panel}>
               <Text style={styles.hint}>
@@ -960,6 +963,7 @@ export default function PropertyScreen() {
               );
             })
           )}
+          </DismissKeyboard>
         </ScrollView>
       </SafeAreaView>
       {/* </ImageBackground> */}
@@ -1082,7 +1086,7 @@ export default function PropertyScreen() {
         onRequestClose={closeBookingDraft}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.bookingModalPanel}>
+          <DismissKeyboard style={styles.bookingModalPanel}>
             <Text style={styles.bookingModalTitle}>Νέα κράτηση</Text>
             {bookingDraft ? (
               <>
@@ -1275,7 +1279,7 @@ export default function PropertyScreen() {
                 </View>
               </>
             ) : null}
-          </View>
+          </DismissKeyboard>
         </View>
       </Modal>
 
@@ -1286,7 +1290,7 @@ export default function PropertyScreen() {
         onRequestClose={() => setPricingRoom(null)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalPanel}>
+          <DismissKeyboard style={styles.modalPanel}>
             <Text style={styles.modalDate}>Τιμές — {pricingRoom?.name}</Text>
 
             {roomPrices.filter((p) => p.room_id === pricingRoom?.id).length ===
@@ -1382,7 +1386,7 @@ export default function PropertyScreen() {
                 </Text>
               </Pressable>
             </View>
-          </View>
+          </DismissKeyboard>
         </View>
       </Modal>
 

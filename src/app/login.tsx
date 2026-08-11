@@ -2,6 +2,7 @@ import { type BrandColors } from "@/constants/theme";
 import { useAuth } from "@/context/AuthProvider";
 import { useSettings } from "@/context/SettingsProvider";
 import { useBrand } from "@/hooks/use-brand";
+import { DismissKeyboard } from "@/components/DismissKeyboard";
 import { fs } from "@/lib/typography";
 import { useMemo, useState } from "react";
 import {
@@ -54,7 +55,7 @@ export default function Login() {
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <View style={styles.container}>
+        <DismissKeyboard style={styles.container}>
           <Text style={styles.title}>my-rooms</Text>
           <Text style={styles.subtitle}>Σύνδεση στον λογαριασμό σου</Text>
 
@@ -98,7 +99,7 @@ export default function Login() {
               )}
             </Pressable>
           </View>
-        </View>
+        </DismissKeyboard>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
