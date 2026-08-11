@@ -831,8 +831,6 @@ export default function PropertyScreen() {
                         room.id,
                         date.dateString,
                       );
-                      const isOutsideMonth =
-                        state === "disabled" || state === "inactive";
                       const kind = mark?.kind;
                       const isSplit = kind === "split";
                       const isDeparture = kind === "departure";
@@ -845,11 +843,9 @@ export default function PropertyScreen() {
                       const textColor =
                         isSplit || onStay
                           ? brand.white
-                          : isOutsideMonth
-                            ? brand.claySoft
-                            : state === "today"
-                              ? brand.primary
-                              : brand.ink;
+                          : state === "today"
+                            ? brand.primary
+                            : brand.ink;
 
                       return (
                         <Pressable
@@ -861,12 +857,6 @@ export default function PropertyScreen() {
                               styles.dayCellIdle,
                             bg ? { backgroundColor: bg } : null,
                             mark?.selected && styles.dayCellSelected,
-                            isOutsideMonth &&
-                              !onStay &&
-                              !isSplit &&
-                              !isArrival &&
-                              !isDeparture &&
-                              styles.dayCellOutside,
                           ]}
                           onPress={() => handleDayPress(room, date.dateString)}
                           onLongPress={() =>
@@ -900,9 +890,9 @@ export default function PropertyScreen() {
                               styles.dayPrice,
                               {
                                 color:
-                                  isSplit || onStay
+                                  isSplit || onStay || isArrival
                                     ? brand.white
-                                    : brand.claySoft,
+                                    : brand.ink,
                               },
                             ]}
                           >
@@ -1010,6 +1000,7 @@ export default function PropertyScreen() {
           roomPrices={roomPrices}
           rooms={rooms}
           onClose={() => setBookingInfo(null)}
+          onChanged={() => setRefreshKey((prev) => prev + 1)}
         />
       ) : null}
 
@@ -1826,9 +1817,6 @@ function createStyles(scale: number, brand: BrandColors) {
     },
     dayCellIdle: {
       backgroundColor: brand.sand,
-    },
-    dayCellOutside: {
-      opacity: 0.45,
     },
     dayCellSelected: {
       borderWidth: 1.5,
