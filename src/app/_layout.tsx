@@ -4,6 +4,7 @@ import { AnimatedSplashOverlay } from "@/components/animated-icon";
 import { useResolvedScheme } from "@/hooks/use-resolved-scheme";
 import { useBrand } from "@/hooks/use-brand";
 import { registerForPushNotifications } from "@/lib/notification";
+import "@/lib/calendarLocale";
 import { DarkTheme, DefaultTheme, ThemeProvider, Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
