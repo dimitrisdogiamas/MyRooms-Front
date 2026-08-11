@@ -484,7 +484,7 @@ export default function PropertyScreen() {
       (b) =>
         b.room_id === room.id &&
         b.start_date.slice(0, 10) <= dateString &&
-        b.end_date.slice(0, 10) >= dateString,
+        b.end_date.slice(0, 10) > dateString,
     );
     if (existing) {
       setSelectStartByRoom((prev) => ({ ...prev, [room.id]: null }));
@@ -864,6 +864,8 @@ export default function PropertyScreen() {
                             isOutsideMonth &&
                               !onStay &&
                               !isSplit &&
+                              !isArrival &&
+                              !isDeparture &&
                               styles.dayCellOutside,
                           ]}
                           onPress={() => handleDayPress(room, date.dateString)}
