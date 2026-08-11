@@ -139,9 +139,11 @@ function createStyles(scale: number, brand: BrandColors) {
       borderColor: "rgba(255, 255, 255, 0.28)",
       borderRadius: 7,
       paddingVertical: 4,
-      paddingHorizontal: 2,
+      paddingHorizontal: 8,
       justifyContent: "center",
       alignItems: "center",
+      alignSelf: "flex-start",
+
     },
     addButtonText: {
       color: brand.white,
@@ -182,6 +184,9 @@ function createStyles(scale: number, brand: BrandColors) {
     },
     cancelText: {
       color: "#9aa9a8",
+      fontSize: s(28),
+      lineHeight: s(30),
+      fontWeight: "400",
     },
   });
 }

@@ -2048,6 +2048,7 @@ function createStyles(scale: number, brand: BrandColors) {
       fontWeight: "700",
       color: brand.ink,
       marginBottom: 6,
+      textAlign: "center",
     },
   });
 }

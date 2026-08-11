@@ -96,10 +96,17 @@ export const BookingsList = ({
         const nights = countNights(item.start_date, item.end_date);
         const cost = getBookingIncome(item, roomPrices);
         const guest = item.guest_name?.trim() || "Χωρίς όνομα";
+        const adults = item.adults ?? 0;
+        const children = item.children ?? 0;
+        const guestsLabel =
+          adults > 0 || children > 0 ? ` (${adults}+${children})` : "";
 
         return (
           <View style={styles.card}>
-            <ThemedText style={styles.guestName}>{guest}</ThemedText>
+            <ThemedText style={styles.guestName}>
+              {guest}
+              {guestsLabel}
+            </ThemedText>
             <ThemedText style={styles.meta}>
               {getRoomName(item.room_id)} · {item.start_date} → {item.end_date}
             </ThemedText>
