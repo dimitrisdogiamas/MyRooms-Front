@@ -1,6 +1,7 @@
 import { Fonts, type BrandColors } from "@/constants/theme";
 import { useSettings } from "@/context/SettingsProvider";
 import { useBrand } from "@/hooks/use-brand";
+import { DismissKeyboard } from "@/components/DismissKeyboard";
 import {
   EXPENSE_CATEGORIES,
   addPropertyExpense,
@@ -128,7 +129,7 @@ export function ExpensesProp({
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <View style={styles.panel}>
+        <DismissKeyboard style={styles.panel}>
           <Text style={styles.title}>Έξοδα</Text>
           {propertyName ? (
             <Text style={styles.subtitle}>{propertyName}</Text>
@@ -177,8 +178,9 @@ export function ExpensesProp({
                 ))}
               </View>
 
+              <Text style={styles.formLabel}>Ποσό</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, styles.inputCentered]}
                 value={amount}
                 onChangeText={setAmount}
                 placeholder="Ποσό (€)"
@@ -233,23 +235,23 @@ export function ExpensesProp({
               style={styles.list}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.listContent}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
             >
               {expenses.map((expense) => (
                 <View style={styles.expense} key={expense.id}>
-                  <View style={styles.expenseLeft}>
-                    <Text style={styles.expenseDate}>{expense.date}</Text>
-                    {expense.category ? (
-                      <Text style={styles.expenseCategory}>
-                        {expense.category}
-                      </Text>
-                    ) : null}
-                    {expense.note ? (
-                      <Text style={styles.expenseMeta}>{expense.note}</Text>
-                    ) : null}
-                  </View>
+                  <Text style={styles.expenseDate}>{expense.date}</Text>
+                  {expense.category ? (
+                    <Text style={styles.expenseCategory}>
+                      {expense.category}
+                    </Text>
+                  ) : null}
                   <Text style={styles.expenseAmount}>
                     {Number(expense.amount).toFixed(2)}€
                   </Text>
+                  {expense.note ? (
+                    <Text style={styles.expenseMeta}>{expense.note}</Text>
+                  ) : null}
                 </View>
               ))}
             </ScrollView>
@@ -258,7 +260,7 @@ export function ExpensesProp({
           <Pressable style={styles.closeBtn} onPress={onClose}>
             <Text style={styles.closeText}>Κλείσιμο</Text>
           </Pressable>
-        </View>
+        </DismissKeyboard>
       </View>
     </Modal>
   );
@@ -301,8 +303,10 @@ function createStyles(scale: number, brand: BrandColors) {
       borderRadius: 16,
       padding: 16,
       gap: 4,
+      alignItems: "center",
     },
     totalsTitle: {
+      textAlign: "center",
       fontSize: s(14),
       fontWeight: "700",
       color: brand.ink,
@@ -311,18 +315,22 @@ function createStyles(scale: number, brand: BrandColors) {
       fontSize: s(22),
       fontWeight: "700",
       color: brand.primary,
+      textAlign: "center",
     },
     categoryTotals: {
       marginTop: 8,
       gap: 2,
+      alignItems: "center",
+      width: "100%",
     },
     categoryTotalLine: {
       fontSize: s(12),
       color: brand.clay,
+      textAlign: "center",
     },
     addBtn: {
       backgroundColor: brand.primary,
-      borderRadius: 12,
+      borderRadius: 9,
       paddingVertical: 12,
       alignItems: "center",
     },
@@ -338,6 +346,7 @@ function createStyles(scale: number, brand: BrandColors) {
       padding: 12,
     },
     formLabel: {
+      textAlign: "center",
       fontSize: s(13),
       fontWeight: "700",
       color: brand.ink,
@@ -346,14 +355,17 @@ function createStyles(scale: number, brand: BrandColors) {
       flexDirection: "row",
       flexWrap: "wrap",
       gap: 6,
+      justifyContent: "center",
     },
     categoryChip: {
       borderWidth: 1,
       borderColor: brand.sandDeep,
-      borderRadius: 999,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
       backgroundColor: brand.white,
+      minWidth: 72,
+      alignItems: "center",
     },
     categoryChipActive: {
       backgroundColor: brand.primary,
@@ -363,6 +375,7 @@ function createStyles(scale: number, brand: BrandColors) {
       fontSize: s(12),
       color: brand.ink,
       fontWeight: "600",
+      textAlign: "center",
     },
     categoryChipTextActive: {
       color: "#ffffff",
@@ -370,12 +383,17 @@ function createStyles(scale: number, brand: BrandColors) {
     input: {
       borderWidth: 1,
       borderColor: brand.sandDeep,
-      borderRadius: 10,
+      borderRadius: 9,
       paddingHorizontal: 12,
       paddingVertical: 10,
       fontSize: s(14),
       color: brand.ink,
       backgroundColor: brand.white,
+    },
+    inputCentered: {
+      textAlign: "center",
+      fontWeight: "700",
+      fontSize: s(16),
     },
     formActions: {
       flexDirection: "row",
@@ -386,7 +404,7 @@ function createStyles(scale: number, brand: BrandColors) {
       flex: 1,
       borderWidth: 1,
       borderColor: brand.sandDeep,
-      borderRadius: 10,
+      borderRadius: 9,
       paddingVertical: 12,
       alignItems: "center",
     },
@@ -398,7 +416,7 @@ function createStyles(scale: number, brand: BrandColors) {
     primaryBtn: {
       flex: 1,
       backgroundColor: brand.primary,
-      borderRadius: 10,
+      borderRadius: 9,
       paddingVertical: 12,
       alignItems: "center",
     },
@@ -425,40 +443,40 @@ function createStyles(scale: number, brand: BrandColors) {
       maxHeight: 260,
     },
     listContent: {
-      gap: 0,
+      gap: 8,
     },
     expense: {
-      flexDirection: "row",
-      justifyContent: "space-between",
       alignItems: "center",
       paddingVertical: 12,
-      paddingHorizontal: 4,
-      borderBottomWidth: 1,
-      borderBottomColor: brand.sandDeep,
-      gap: 12,
-    },
-    expenseLeft: {
-      flex: 1,
-      gap: 2,
+      paddingHorizontal: 8,
+      borderWidth: 1,
+      borderColor: brand.sandDeep,
+      borderRadius: 9,
+      backgroundColor: brand.sand,
+      gap: 4,
     },
     expenseDate: {
-      fontSize: s(14),
+      fontSize: s(12),
       fontWeight: "600",
-      color: brand.ink,
+      color: brand.claySoft,
+      textAlign: "center",
     },
     expenseCategory: {
-      fontSize: s(12),
+      fontSize: s(14),
       fontWeight: "700",
-      color: brand.primary,
+      color: brand.ink,
+      textAlign: "center",
     },
     expenseMeta: {
       fontSize: s(12),
       color: brand.claySoft,
+      textAlign: "center",
     },
     expenseAmount: {
-      fontSize: s(15),
+      fontSize: s(16),
       fontWeight: "700",
       color: brand.primary,
+      textAlign: "center",
     },
     closeBtn: {
       borderWidth: 1,

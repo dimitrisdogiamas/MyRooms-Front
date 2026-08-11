@@ -3,6 +3,7 @@ import { fontOptions, fs } from "@/lib/typography";
 import { useMemo } from "react";
 import { useSettings } from "@/context/SettingsProvider";
 import { useBrand } from "@/hooks/use-brand";
+import { DismissKeyboard } from "@/components/DismissKeyboard";
 import * as LocalAuthentication from "expo-local-authentication";
 import { Alert, Pressable,
   ScrollView,
@@ -28,8 +29,9 @@ export default function SettingsScreen() {
       style={styles.container}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
     >
-      <View style={styles.inner}>
+      <DismissKeyboard style={styles.inner}>
         <Text style={styles.pageTitle}>Ρυθμίσεις</Text>
 
         <View style={styles.card}>
@@ -196,26 +198,28 @@ export default function SettingsScreen() {
         >
           <Text style={styles.saveButtonText}>Αποθήκευση</Text>
         </Pressable>
-      </View>
 
-       <Pressable
-        style={styles.logoutButton}
-        onPress={async () => {
-          try {
-            await signOut();
-          } catch (error) {
-            Alert.alert("Error"
-              , error instanceof Error ? error.message : "Failed to logout");
-          }
-        }}
-      >
-        <Text style={styles.saveButtonText}>Αποσύνδεση</Text>
-      </Pressable>
+        <Pressable
+          style={styles.logoutButton}
+          onPress={async () => {
+            try {
+              await signOut();
+            } catch (error) {
+              Alert.alert(
+                "Error",
+                error instanceof Error ? error.message : "Failed to logout",
+              );
+            }
+          }}
+        >
+          <Text style={styles.saveButtonText}>Αποσύνδεση</Text>
+        </Pressable>
 
-      <Text style={styles.sectionTitle}>Σχετικά</Text>
+        <Text style={styles.sectionTitle}>Σχετικά</Text>
         <View style={styles.card}>
           <Text style={styles.meta}>my-rooms · v1.0.0</Text>
         </View>
+      </DismissKeyboard>
     </ScrollView>
   );
 }
