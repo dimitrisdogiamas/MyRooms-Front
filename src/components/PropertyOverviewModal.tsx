@@ -158,7 +158,14 @@ export function PropertyOverviewModal({
 
               <View style={styles.linesBlock}>
                 <Text style={styles.line}>
-                  Άτομα: {overview.totals.adults} + {overview.totals.children}
+                  Άτομα:{" "}
+                  <Text style={styles.adultsCount}>
+                    {overview.totals.adults}
+                  </Text>
+                  {" + "}
+                  <Text style={styles.childrenCount}>
+                    {overview.totals.children}
+                  </Text>
                 </Text>
 
                 <Text style={styles.line}>
@@ -183,7 +190,40 @@ export function PropertyOverviewModal({
             {overview.years.map((year) => (
               <View key={year.year} style={styles.yearCard}>
                 <Text style={styles.yearTitle}>{year.year}</Text>
-                <OverviewLines data={year} styles={styles} compact />
+
+                <View>
+              <Text style={styles.totalsTitle}>Σύνολο</Text>
+
+              <View style={styles.linesBlock}>
+                <Text style={styles.line}>
+                  Άτομα:{" "}
+                  <Text style={styles.adultsCount}>
+                    {overview.totals.adults}
+                  </Text>
+                  {" + "}
+                  <Text style={styles.childrenCount}>
+                    {overview.totals.children}
+                  </Text>
+                </Text>
+
+                <Text style={styles.line}>
+                  Κρατήσεις: {overview.totals.bookings}
+                </Text>
+
+                <Text style={styles.line}>
+                  Ημέρες Πληρότητας: {overview.totals.occupiedNights}
+                </Text>
+
+
+                <Text style={styles.incomeLine}>
+                  Έσοδα: {overview.totals.revenue.toFixed(2)}€
+                </Text>
+
+                <Text style={styles.expenseLine}>
+                  Έξοδα: {overview.totals.expenses.toFixed(2)}€
+                </Text>
+              </View>
+            </View>
               </View>
             ))}
 
@@ -300,6 +340,14 @@ function createStyles(scale: number, brand: BrandColors) {
       fontSize: s(14),
       color: brand.ink,
       textAlign: "center",
+    },
+    adultsCount: {
+      color: brand.danger,
+      fontWeight: "700",
+    },
+    childrenCount: {
+      color: "#2563eb",
+      fontWeight: "700",
     },
     incomeLine: {
       fontSize: s(15),

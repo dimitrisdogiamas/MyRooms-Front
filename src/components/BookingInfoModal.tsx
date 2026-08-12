@@ -5,17 +5,10 @@ import { useSettings } from "@/context/SettingsProvider";
 import { useBrand } from "@/hooks/use-brand";
 import { addDays } from "@/lib/bookingInsights";
 import { getBookingIncome, type RoomPricing } from "@/lib/roomPricing";
-import { fs } from "@/lib/typography";
 import { supabase } from "@/lib/supabase";
+import { fs } from "@/lib/typography";
 import { useEffect, useMemo, useState } from "react";
-import {
-  Alert,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Alert, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
 type BookingInfoModalProps = {
   visible: boolean;
@@ -105,20 +98,16 @@ export function BookingInfoModal({
   }
 
   function confirmDelete() {
-    Alert.alert(
-      "Διαγραφή κράτησης",
-      "Να διαγραφεί οριστικά αυτή η κράτηση;",
-      [
-        { text: "Άκυρο", style: "cancel" },
-        {
-          text: "Διαγραφή",
-          style: "destructive",
-          onPress: () => {
-            void deleteBooking();
-          },
+    Alert.alert("Διαγραφή κράτησης", "Να διαγραφεί οριστικά αυτή η κράτηση;", [
+      { text: "Άκυρο", style: "cancel" },
+      {
+        text: "Διαγραφή",
+        style: "destructive",
+        onPress: () => {
+          void deleteBooking();
         },
-      ],
-    );
+      },
+    ]);
   }
 
   async function deleteBooking() {
@@ -152,9 +141,7 @@ export function BookingInfoModal({
           {roomName ? <Text style={styles.subtitle}>{roomName}</Text> : null}
 
           <View style={styles.card}>
-            <Text style={styles.line}>
-               {booking.guest_name?.trim() || "—"}
-            </Text>
+            <Text style={styles.line}>{booking.guest_name?.trim() || "—"}</Text>
 
             <View style={[styles.guestsBox, styles.guestsRow]}>
               <View style={styles.guestStepper}>
@@ -170,9 +157,7 @@ export function BookingInfoModal({
                 <Text style={[styles.stepperLabel, styles.guestStepperLabel]}>
                   Παιδιά
                 </Text>
-                  <Text style={styles.stepperValue}>{children}</Text>
-
-                </View>
+                <Text style={styles.stepperValue}>{children}</Text>
               </View>
             </View>
 
@@ -209,8 +194,8 @@ export function BookingInfoModal({
           <Pressable style={styles.closeBtn} onPress={onClose}>
             <Text style={styles.closeText}>Κλείσιμο</Text>
           </Pressable>
-
         </View>
+      </View>
     </Modal>
   );
 }
@@ -253,12 +238,12 @@ function createStyles(scale: number, brand: BrandColors) {
       gap: 8,
     },
     line: {
-        textAlign: "center",
+      textAlign: "center",
       fontSize: s(14),
       color: brand.ink,
     },
     cost: {
-        textAlign: "center",
+      textAlign: "center",
       fontSize: s(16),
       fontWeight: "700",
       color: brand.primary,
@@ -349,7 +334,7 @@ function createStyles(scale: number, brand: BrandColors) {
     },
     closeBtn: {
       borderWidth: 1,
-      borderColor: brand.sandDeep,
+      borderColor: brand.ink,
       borderRadius: 14,
       paddingVertical: 14,
       alignItems: "center",
