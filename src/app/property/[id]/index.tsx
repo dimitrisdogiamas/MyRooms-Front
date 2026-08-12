@@ -921,7 +921,7 @@ export default function PropertyScreen() {
                         isSplit || onStay
                           ? brand.white
                           : isArrival
-                            ? brand.ink
+                            ? brand.white
                             : state === "today"
                               ? brand.primary
                               : brand.ink;
@@ -1224,7 +1224,12 @@ export default function PropertyScreen() {
                 </Text>
 
                 <TextInput
-                  style={styles.bookingGuestInput}
+                  style={[
+                    styles.bookingGuestInput,
+                    {
+                      textAlign: guestName.trim() ? "left" : "center",
+                    },
+                  ]}
                   placeholder="Όνομα πελάτη"
                   placeholderTextColor={brand.claySoft}
                   value={guestName}
@@ -1280,7 +1285,12 @@ export default function PropertyScreen() {
                     Κόστος διανυκτέρευσης (€)
                   </Text>
                   <TextInput
-                    style={styles.bookingGuestInput}
+                    style={[
+                      styles.bookingGuestInput,
+                      {
+                        textAlign: bookingPrice.trim() ? "left" : "center",
+                      },
+                    ]}
                     placeholder="π.χ. 55"
                     placeholderTextColor={brand.claySoft}
                     value={bookingPrice}
@@ -1288,8 +1298,7 @@ export default function PropertyScreen() {
                     keyboardType="decimal-pad"
                   />
                   <Text style={styles.bookingPriceHint}>
-                    Αν το συμπληρώσετε, υπερισχύει των οριζόμενων τιμών και αυτό
-                    θα υπολογίζεται στα έσοδα.
+                    Υπερισχύει των οριζόμενων τιμών.
                   </Text>
                 </View>
 
