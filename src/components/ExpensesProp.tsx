@@ -6,12 +6,12 @@ import {
   EXPENSE_CATEGORIES,
   addPropertyExpense,
   getExpensesTotal,
-  getExpensesTotalByCategory,
   getPropertyExpenses,
   type Expense,
   type ExpenseCategory,
 } from "@/lib/expenses";
 import { fs } from "@/lib/typography";
+import { router } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -104,7 +104,12 @@ export function ExpensesProp({
   }, [visible, propertyId]);
 
   const total = getExpensesTotal(expenses);
-  const byCategory = getExpensesTotalByCategory(expenses);
+
+  function openExpensesPage() {
+    if (!propertyId) return;
+    onClose();
+    router.push(`/property/${propertyId}/expenses`);
+  }
 
   async function handleAdd() {
     const value = Number(amount.replace(",", "."));
@@ -168,15 +173,6 @@ export function ExpensesProp({
               <View style={styles.totalsCard}>
                 <Text style={styles.totalsTitle}>Σύνολο</Text>
                 <Text style={styles.totalsValue}>{total.toFixed(2)}€</Text>
-                {byCategory.length > 0 ? (
-                  <View style={styles.categoryTotals}>
-                    {byCategory.map((row) => (
-                      <Text key={row.category} style={styles.categoryTotalLine}>
-                        {row.category}: {row.total.toFixed(2)}€
-                      </Text>
-                    ))}
-                  </View>
-                ) : null}
               </View>
 
               {!adding ? (
@@ -303,29 +299,12 @@ export function ExpensesProp({
                   color={brand.primary}
                   style={styles.loader}
                 />
-              ) : expenses.length === 0 ? (
-                <Text style={styles.empty}>Δεν υπάρχουν έξοδα ακόμα.</Text>
               ) : (
-                <View style={styles.listContent}>
-                  {expenses.map((expense) => (
-                    <View style={styles.expense} key={expense.id}>
-                      <Text style={styles.expenseDate}>
-                        {formatDisplayDate(expense.date)}
-                      </Text>
-                      {expense.category ? (
-                        <Text style={styles.expenseCategory}>
-                          {expense.category}
-                        </Text>
-                      ) : null}
-                      <Text style={styles.expenseAmount}>
-                        {Number(expense.amount).toFixed(2)}€
-                      </Text>
-                      {expense.note ? (
-                        <Text style={styles.expenseMeta}>{expense.note}</Text>
-                      ) : null}
-                    </View>
-                  ))}
-                </View>
+                <Pressable style={styles.viewAllBtn} onPress={openExpensesPage}>
+                  <Text style={styles.viewAllBtnText}>
+                    Αναλυτική ({expenses.length})
+                  </Text>
+                </Pressable>
               )}
             </DismissKeyboard>
           </ScrollView>
@@ -440,8 +419,8 @@ function createStyles(scale: number, brand: BrandColors) {
     },
     totalsCard: {
       backgroundColor: brand.sandDeep,
-      borderRadius: 16,
-      padding: 16,
+      borderRadius: 10,
+      padding: 4,
       gap: 4,
       alignItems: "center",
     },
@@ -455,17 +434,6 @@ function createStyles(scale: number, brand: BrandColors) {
       fontSize: s(22),
       fontWeight: "700",
       color: brand.primary,
-      textAlign: "center",
-    },
-    categoryTotals: {
-      marginTop: 8,
-      gap: 2,
-      alignItems: "center",
-      width: "100%",
-    },
-    categoryTotalLine: {
-      fontSize: s(12),
-      color: brand.clay,
       textAlign: "center",
     },
     addBtn: {
@@ -619,54 +587,24 @@ function createStyles(scale: number, brand: BrandColors) {
     loader: {
       marginVertical: 24,
     },
-    empty: {
-      fontSize: s(14),
-      color: brand.claySoft,
-      textAlign: "center",
-      paddingVertical: 20,
-    },
     errorText: {
       fontSize: s(13),
       color: brand.danger,
       textAlign: "center",
     },
-    listContent: {
-      gap: 10,
-      marginBottom: 8,
-    },
-    expense: {
-      alignItems: "center",
-      paddingVertical: 12,
-      paddingHorizontal: 8,
+    viewAllBtn: {
       borderWidth: 1,
-      borderColor: brand.sandDeep,
+      borderColor: brand.primary,
       borderRadius: 9,
-      backgroundColor: brand.sand,
-      gap: 4,
+      paddingVertical: 12,
+      alignItems: "center",
+      backgroundColor: brand.white,
       marginBottom: 2,
     },
-    expenseDate: {
-      fontSize: s(12),
-      fontWeight: "600",
-      color: brand.claySoft,
-      textAlign: "center",
-    },
-    expenseCategory: {
-      fontSize: s(14),
-      fontWeight: "700",
-      color: brand.ink,
-      textAlign: "center",
-    },
-    expenseMeta: {
-      fontSize: s(12),
-      color: brand.claySoft,
-      textAlign: "center",
-    },
-    expenseAmount: {
-      fontSize: s(16),
-      fontWeight: "700",
+    viewAllBtnText: {
       color: brand.primary,
-      textAlign: "center",
+      fontWeight: "700",
+      fontSize: s(14),
     },
     closeBtn: {
       borderWidth: 1,

@@ -191,39 +191,28 @@ export function PropertyOverviewModal({
               <View key={year.year} style={styles.yearCard}>
                 <Text style={styles.yearTitle}>{year.year}</Text>
 
-                <View>
-              <Text style={styles.totalsTitle}>Σύνολο</Text>
-
-              <View style={styles.linesBlock}>
-                <Text style={styles.line}>
-                  Άτομα:{" "}
-                  <Text style={styles.adultsCount}>
-                    {overview.totals.adults}
+                <View style={styles.linesBlock}>
+                  <Text style={styles.line}>
+                    Άτομα:{" "}
+                    <Text style={styles.adultsCount}>{year.adults}</Text>
+                    {" + "}
+                    <Text style={styles.childrenCount}>{year.children}</Text>
                   </Text>
-                  {" + "}
-                  <Text style={styles.childrenCount}>
-                    {overview.totals.children}
+
+                  <Text style={styles.line}>Κρατήσεις: {year.bookings}</Text>
+
+                  <Text style={styles.line}>
+                    Ημέρες Πληρότητας: {year.occupiedNights}
                   </Text>
-                </Text>
 
-                <Text style={styles.line}>
-                  Κρατήσεις: {overview.totals.bookings}
-                </Text>
+                  <Text style={styles.incomeLine}>
+                    Έσοδα: {year.revenue.toFixed(2)}€
+                  </Text>
 
-                <Text style={styles.line}>
-                  Ημέρες Πληρότητας: {overview.totals.occupiedNights}
-                </Text>
-
-
-                <Text style={styles.incomeLine}>
-                  Έσοδα: {overview.totals.revenue.toFixed(2)}€
-                </Text>
-
-                <Text style={styles.expenseLine}>
-                  Έξοδα: {overview.totals.expenses.toFixed(2)}€
-                </Text>
-              </View>
-            </View>
+                  <Text style={styles.expenseLine}>
+                    Έξοδα: {year.expenses.toFixed(2)}€
+                  </Text>
+                </View>
               </View>
             ))}
 

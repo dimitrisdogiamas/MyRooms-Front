@@ -920,9 +920,11 @@ export default function PropertyScreen() {
                       const textColor =
                         isSplit || onStay
                           ? brand.white
-                          : state === "today"
-                            ? brand.primary
-                            : brand.ink;
+                          : isArrival
+                            ? brand.ink
+                            : state === "today"
+                              ? brand.primary
+                              : brand.ink;
 
                       return (
                         <Pressable
@@ -967,9 +969,7 @@ export default function PropertyScreen() {
                               styles.dayPrice,
                               {
                                 color:
-                                  isSplit || onStay || isArrival
-                                    ? brand.white
-                                    : brand.ink,
+                                  isSplit || onStay ? brand.white : brand.ink,
                               },
                             ]}
                           >
@@ -982,6 +982,13 @@ export default function PropertyScreen() {
 
                   <View style={styles.legend}>
                     <View style={styles.legendItem}>
+                      <View style={styles.dotSplit}>
+                        <View style={styles.dotSplitSand} />
+                        <View style={styles.dotArrivalTeal} />
+                      </View>
+                      <Text style={styles.legendText}>Άφιξη</Text>
+                    </View>
+                    <View style={styles.legendItem}>
                       <View
                         style={[
                           styles.dot,
@@ -989,13 +996,6 @@ export default function PropertyScreen() {
                         ]}
                       />
                       <Text style={styles.legendText}>Διαμονή</Text>
-                    </View>
-                    <View style={styles.legendItem}>
-                      <View style={styles.dotSplit}>
-                        <View style={styles.dotSplitSand} />
-                        <View style={styles.dotArrivalTeal} />
-                      </View>
-                      <Text style={styles.legendText}>Άφιξη</Text>
                     </View>
                     <View style={styles.legendItem}>
                       <View style={styles.dotSplit}>
