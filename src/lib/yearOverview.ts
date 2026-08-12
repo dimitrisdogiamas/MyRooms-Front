@@ -1,4 +1,5 @@
 import { addDays } from "./bookingInsights";
+import type { Expense } from "./expenses";
 import { getPriceForNight, type RoomPricing } from "./roomPricing";
 import type { Booking } from "@/components/BookingsList";
 import type { Room } from "@/components/RoomsSelector";
@@ -19,19 +20,30 @@ export type YearOverview = {
     rooms: number;
     bookings: number;
     occupiedNights: number;
-    income: number;
+    adults: number;
+    children: number;
+    revenue: number;
+    expenses: number;
   };
 };
+
+function expenseYear(expense: Expense): number {
+  return Number(String(expense.date).slice(0, 4));
+}
 
 export function getYearOverview(
   bookings: Booking[],
   rooms: Room[],
   roomPrices: RoomPricing[],
   year: number,
+  expenses: Expense[] = [],
 ): YearOverview {
   const yearStart = `${year}-01-01`;
   const nextYearStart = `${year + 1}-01-01`;
   const roomsStats: RoomYearStats[] = [];
+  let adults = 0;
+  let children = 0;
+  const countedBookingIds = new Set<string>();
 
   for (const room of rooms) {
     const roomBookings = bookings.filter((b) => b.room_id === room.id);
@@ -49,6 +61,11 @@ export function getYearOverview(
       if (end <= yearStart || start >= nextYearStart) continue;
 
       bookingsCount += 1;
+      if (!countedBookingIds.has(booking.id)) {
+        countedBookingIds.add(booking.id);
+        adults += booking.adults ?? 2;
+        children += booking.children ?? 0;
+      }
 
       let current = start < yearStart ? yearStart : start;
       const last = end > nextYearStart ? nextYearStart : end;
@@ -71,6 +88,10 @@ export function getYearOverview(
     });
   }
 
+  const yearExpenses = expenses
+    .filter((e) => expenseYear(e) === year)
+    .reduce((sum, e) => sum + Number(e.amount), 0);
+
   return {
     year,
     rooms: roomsStats,
@@ -78,7 +99,10 @@ export function getYearOverview(
       rooms: roomsStats.length,
       bookings: roomsStats.reduce((sum, r) => sum + r.bookingsCount, 0),
       occupiedNights: roomsStats.reduce((sum, r) => sum + r.occupiedNights, 0),
-      income: roomsStats.reduce((sum, r) => sum + r.income, 0),
+      adults,
+      children,
+      revenue: roomsStats.reduce((sum, r) => sum + r.income, 0),
+      expenses: yearExpenses,
     },
   };
 }

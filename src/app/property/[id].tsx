@@ -9,6 +9,7 @@ import { Fonts, type BrandColors } from "@/constants/theme";
 import { useSettings } from "@/context/SettingsProvider";
 import { useBrand } from "@/hooks/use-brand";
 import { addDays } from "@/lib/bookingInsights";
+import { getPropertyExpenses, type Expense } from "@/lib/expenses";
 import {
   applyRoomPriceRange,
   bookingHasMissingPrices,
@@ -149,6 +150,7 @@ export default function PropertyScreen() {
   const [needsSheets, setNeedsSheets] = useState(false);
   const [earlyCheckout, setEarlyCheckout] = useState(false);
   const [roomPrices, setRoomPrices] = useState<RoomPricing[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [pricingRoom, setPricingRoom] = useState<Room | null>(null);
   const [priceStart, setPriceStart] = useState("");
   const [priceEnd, setPriceEnd] = useState("");
@@ -245,11 +247,15 @@ export default function PropertyScreen() {
       setBookings([]);
       setRoomAvailability({});
       setRoomPrices([]);
+      const emptyExpenses = await getPropertyExpenses(propertyId).catch(
+        () => [] as Expense[],
+      );
+      setExpenses(emptyExpenses);
       setLoading(false);
       return;
     }
 
-    const [bookingsRes, pricesRes] = await Promise.all([
+    const [bookingsRes, pricesRes, expensesRows] = await Promise.all([
       supabase
         .from("bookings")
         .select(
@@ -262,6 +268,7 @@ export default function PropertyScreen() {
         .select("id, room_id, start_date, end_date, price_per_night")
         .in("room_id", roomIds)
         .order("start_date", { ascending: true }),
+      getPropertyExpenses(propertyId).catch(() => [] as Expense[]),
     ]);
 
     let bookingsData: Booking[] | null = (bookingsRes.data as Booking[] | null) ?? null;
@@ -299,6 +306,8 @@ export default function PropertyScreen() {
         })),
       );
     }
+
+    setExpenses(expensesRows);
 
     setLoading(false);
   }, [propertyId, brand]);
@@ -794,6 +803,7 @@ export default function PropertyScreen() {
                             rooms,
                             roomPrices,
                             year,
+                            expenses,
                           ),
                         );
                       }}

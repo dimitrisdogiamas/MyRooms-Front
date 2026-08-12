@@ -342,11 +342,11 @@ function createStyles(scale: number, brand: BrandColors) {
       textAlign: "center",
     },
     adultsCount: {
-      color: brand.danger,
+      color: "#2563eb",
       fontWeight: "700",
     },
     childrenCount: {
-      color: "#2563eb",
+      color: brand.danger,
       fontWeight: "700",
     },
     incomeLine: {
