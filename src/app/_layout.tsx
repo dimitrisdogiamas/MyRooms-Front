@@ -89,9 +89,7 @@ function RootLayoutNav() {
           <Stack.Screen
             name="property/[id]"
             options={{
-              presentation: "modal",
-              title: "Κράτηση",
-              headerShown: true,
+              headerShown: false,
             }}
           />
           <Stack.Screen

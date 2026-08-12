@@ -9,6 +9,7 @@ import { Fonts, type BrandColors } from "@/constants/theme";
 import { useSettings } from "@/context/SettingsProvider";
 import { useBrand } from "@/hooks/use-brand";
 import { addDays } from "@/lib/bookingInsights";
+import { getPropertyExpenses, type Expense } from "@/lib/expenses";
 import {
   applyRoomPriceRange,
   bookingHasMissingPrices,
@@ -149,6 +150,7 @@ export default function PropertyScreen() {
   const [needsSheets, setNeedsSheets] = useState(false);
   const [earlyCheckout, setEarlyCheckout] = useState(false);
   const [roomPrices, setRoomPrices] = useState<RoomPricing[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [pricingRoom, setPricingRoom] = useState<Room | null>(null);
   const [priceStart, setPriceStart] = useState("");
   const [priceEnd, setPriceEnd] = useState("");
@@ -173,7 +175,9 @@ export default function PropertyScreen() {
     booking: Booking;
     pressedDate: string;
   } | null>(null);
-  const overviewYear = new Date().getFullYear();
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [yearMenuOpen, setYearMenuOpen] = useState(false);
 
   const { settings } = useSettings();
   const brand = useBrand();
@@ -181,6 +185,31 @@ export default function PropertyScreen() {
     () => createStyles(settings.fontScale, brand),
     [settings.fontScale, brand],
   );
+
+
+  const yearOptions = useMemo(() => {
+    const years = new Set<number>();
+    // Always offer a selectable range, not only years that already have data
+    for (let y = currentYear - 5; y <= currentYear; y++) {
+      years.add(y);
+    }
+
+    for (const b of bookings) {
+      const startY = Number(b.start_date.slice(0, 4));
+      const endY = Number(b.end_date.slice(0, 4));
+      if (!Number.isFinite(startY) || !Number.isFinite(endY)) continue;
+      for (let y = startY; y <= endY; y++) years.add(y);
+    }
+
+    for (const p of roomPrices) {
+      const startY = Number(p.start_date.slice(0, 4));
+      const endY = Number(p.end_date.slice(0, 4));
+      if (!Number.isFinite(startY) || !Number.isFinite(endY)) continue;
+      for (let y = startY; y <= endY; y++) years.add(y);
+    }
+
+    return [...years].sort((a, b) => b - a);
+  }, [bookings, roomPrices, currentYear]);
 
   const fetchPropertyData = useCallback(async () => {
     setLoading(true);
@@ -218,11 +247,15 @@ export default function PropertyScreen() {
       setBookings([]);
       setRoomAvailability({});
       setRoomPrices([]);
+      const emptyExpenses = await getPropertyExpenses(propertyId).catch(
+        () => [] as Expense[],
+      );
+      setExpenses(emptyExpenses);
       setLoading(false);
       return;
     }
 
-    const [bookingsRes, pricesRes] = await Promise.all([
+    const [bookingsRes, pricesRes, expensesRows] = await Promise.all([
       supabase
         .from("bookings")
         .select(
@@ -235,6 +268,7 @@ export default function PropertyScreen() {
         .select("id, room_id, start_date, end_date, price_per_night")
         .in("room_id", roomIds)
         .order("start_date", { ascending: true }),
+      getPropertyExpenses(propertyId).catch(() => [] as Expense[]),
     ]);
 
     let bookingsData: Booking[] | null = (bookingsRes.data as Booking[] | null) ?? null;
@@ -272,6 +306,8 @@ export default function PropertyScreen() {
         })),
       );
     }
+
+    setExpenses(expensesRows);
 
     setLoading(false);
   }, [propertyId, brand]);
@@ -738,16 +774,54 @@ export default function PropertyScreen() {
               <Text style={styles.headerPillText}>{"<"} Σπίτια</Text>
             </Pressable>
 
-            <Pressable
-              style={[styles.headerPill, styles.headerSide]}
-              onPress={() =>
-                setYearOverview(
-                  getYearOverview(bookings, rooms, roomPrices, overviewYear),
-                )
-              }
-            >
-              <Text style={styles.headerPillText}>{overviewYear}</Text>
-            </Pressable>
+
+            <View style={styles.yearMenu}>
+              <Pressable
+                style={[styles.headerPill, styles.headerSide]}
+                onPress={() => setYearMenuOpen((prev) => !prev)}
+              >
+                <Text style={styles.headerPillText}>
+                  {selectedYear} ▾
+                </Text>
+              </Pressable>
+
+              {yearMenuOpen ? (
+                <View style={styles.yearDropdown}>
+                  {yearOptions.map((year) => (
+                    <Pressable
+                      key={year}
+                      style={[
+                        styles.yearDropdownItem,
+                        year === selectedYear && styles.yearDropdownItemActive,
+                      ]}
+                      onPress={() => {
+                        setSelectedYear(year);
+                        setYearMenuOpen(false);
+                        setYearOverview(
+                          getYearOverview(
+                            bookings,
+                            rooms,
+                            roomPrices,
+                            year,
+                            expenses,
+                          ),
+                        );
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.yearDropdownItemText,
+                          year === selectedYear &&
+                            styles.yearDropdownItemTextActive,
+                        ]}
+                      >
+                        {year}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
+            </View>
           </View>
 
           <View style={styles.propertyHeaderActions}>
@@ -846,9 +920,11 @@ export default function PropertyScreen() {
                       const textColor =
                         isSplit || onStay
                           ? brand.white
-                          : state === "today"
-                            ? brand.primary
-                            : brand.ink;
+                          : isArrival
+                            ? brand.ink
+                            : state === "today"
+                              ? brand.primary
+                              : brand.ink;
 
                       return (
                         <Pressable
@@ -893,9 +969,7 @@ export default function PropertyScreen() {
                               styles.dayPrice,
                               {
                                 color:
-                                  isSplit || onStay || isArrival
-                                    ? brand.white
-                                    : brand.ink,
+                                  isSplit || onStay ? brand.white : brand.ink,
                               },
                             ]}
                           >
@@ -908,6 +982,13 @@ export default function PropertyScreen() {
 
                   <View style={styles.legend}>
                     <View style={styles.legendItem}>
+                      <View style={styles.dotSplit}>
+                        <View style={styles.dotSplitSand} />
+                        <View style={styles.dotArrivalTeal} />
+                      </View>
+                      <Text style={styles.legendText}>Άφιξη</Text>
+                    </View>
+                    <View style={styles.legendItem}>
                       <View
                         style={[
                           styles.dot,
@@ -915,13 +996,6 @@ export default function PropertyScreen() {
                         ]}
                       />
                       <Text style={styles.legendText}>Διαμονή</Text>
-                    </View>
-                    <View style={styles.legendItem}>
-                      <View style={styles.dotSplit}>
-                        <View style={styles.dotSplitSand} />
-                        <View style={styles.dotArrivalTeal} />
-                      </View>
-                      <Text style={styles.legendText}>Άφιξη</Text>
                     </View>
                     <View style={styles.legendItem}>
                       <View style={styles.dotSplit}>
@@ -1455,8 +1529,9 @@ function createStyles(scale: number, brand: BrandColors) {
       backgroundColor: "#16323A",
       paddingVertical: 6,
       paddingHorizontal: 18,
-      zIndex: 10,
+      zIndex: 20,
       gap: 10,
+      overflow: "visible",
     },
     propertyHeaderTop: {
       flexDirection: "row",
@@ -1464,6 +1539,8 @@ function createStyles(scale: number, brand: BrandColors) {
       justifyContent: "space-between",
       position: "relative",
       minHeight: 36,
+      zIndex: 20,
+      overflow: "visible",
     },
     headerPill: {
       borderWidth: 1,
@@ -2053,6 +2130,40 @@ function createStyles(scale: number, brand: BrandColors) {
       color: brand.ink,
       marginBottom: 6,
       textAlign: "center",
+    },
+    yearMenu: {
+      position: "relative",
+      zIndex: 30,
+    },
+    yearDropdown: {
+      position: "absolute",
+      top: "100%",
+      right: 0,
+      marginTop: 4,
+      backgroundColor: brand.white,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: brand.ink,
+      zIndex: 40,
+      elevation: 8,
+      minWidth: 96,
+      overflow: "hidden",
+    },
+    yearDropdownItem: {
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      alignItems: "center",
+    },
+    yearDropdownItemActive: {
+      backgroundColor: brand.sand,
+    },
+    yearDropdownItemText: {
+      color: brand.ink,
+      fontWeight: "600",
+    },
+    yearDropdownItemTextActive: {
+      color: brand.primary,
+      fontWeight: "700",
     },
   });
 }

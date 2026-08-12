@@ -98,7 +98,7 @@ function RoomSection({
     <View style={styles.roomSection}>
       <Text style={styles.roomName}>{room.roomName}</Text>
       <View style={styles.statsRow}>
-        <View style={styles.statItem}>
+        {/* <View style={styles.statItem}>
           <Text style={styles.statLabel}>Κρατήσεις</Text>
           <Text style={styles.statValue}>{room.bookingsCount}</Text>
         </View>
@@ -109,7 +109,7 @@ function RoomSection({
         <View style={styles.statItem}>
           <Text style={styles.statLabel}>Έσοδα</Text>
           <Text style={styles.statValue}>{room.income.toFixed(2)}€</Text>
-        </View>
+        </View> */}
       </View>
       <View style={styles.monthsWrap}>
         {MONTH_LABELS.map((_, monthIndex) => (
@@ -160,6 +160,40 @@ export function YearOverviewModal({
             </Text>
             <Text style={styles.subtitle}>{propertyName}</Text>
 
+            <View style={styles.totalsCard}>
+              <Text style={styles.totalsTitle}>Σύνολο</Text>
+              <View style={styles.linesBlock}>
+                <Text style={styles.line}>
+                  Άτομα:{" "}
+                  <Text style={styles.adultsCount}>
+                    {overview.totals.adults}
+                  </Text>
+                  {" + "}
+                  <Text style={styles.childrenCount}>
+                    {overview.totals.children}
+                  </Text>
+                </Text>
+
+
+                <Text style={styles.line}>
+                  Κρατήσεις: {overview.totals.bookings}
+                </Text>
+
+                <Text style={styles.line}>
+                  Ημέρες Πληρότητας: {overview.totals.occupiedNights}
+                </Text>
+
+
+                <Text style={styles.incomeLine}>
+                  Έσοδα: {overview.totals.revenue.toFixed(2)}€
+                </Text>
+
+                <Text style={styles.expenseLine}>
+                  Έξοδα: {overview.totals.expenses.toFixed(2)}€
+                </Text>
+              </View>
+            </View>
+
             {overview.rooms.map((room) => (
               <RoomSection
                 key={room.roomId}
@@ -170,21 +204,7 @@ export function YearOverviewModal({
               />
             ))}
 
-            <View style={styles.totalsCard}>
-              <Text style={styles.totalsTitle}>Σύνολο {propertyName}</Text>
-              <Text style={styles.totalsLine}>
-                Δωμάτια: {overview.totals.rooms}
-              </Text>
-              <Text style={styles.totalsLine}>
-                Σύνολο κρατήσεων: {overview.totals.bookings}
-              </Text>
-              <Text style={styles.totalsLine}>
-                Σύνολο κρατημένων ημερών: {overview.totals.occupiedNights}
-              </Text>
-              <Text style={styles.totalsIncome}>
-                Σύνολο εσόδων: {overview.totals.income.toFixed(2)}€
-              </Text>
-            </View>
+
           </ScrollView>
 
           <Pressable style={styles.closeBtn} onPress={onClose}>
@@ -236,6 +256,7 @@ function createStyles(scale: number, brand: BrandColors) {
       gap: 10,
     },
     roomName: {
+      textAlign: "center",
       fontSize: s(16),
       fontWeight: "700",
       color: brand.ink,
@@ -299,22 +320,45 @@ function createStyles(scale: number, brand: BrandColors) {
       borderRadius: 16,
       padding: 16,
       gap: 6,
+      alignItems: "center",
     },
     totalsTitle: {
       fontSize: s(16),
       fontWeight: "700",
       color: brand.ink,
       marginBottom: 4,
+      textAlign: "center",
     },
-    totalsLine: {
+    linesBlock: {
+      gap: 6,
+      alignItems: "center",
+      width: "100%",
+    },
+    line: {
       fontSize: s(14),
       color: brand.ink,
+      textAlign: "center",
     },
-    totalsIncome: {
+    adultsCount: {
+      color: "#2563eb",
+      fontWeight: "700",
+    },
+    childrenCount: {
+      color: brand.danger,
+      fontWeight: "700",
+    },
+    incomeLine: {
       fontSize: s(15),
       fontWeight: "700",
       color: brand.primary,
       marginTop: 4,
+      textAlign: "center",
+    },
+    expenseLine: {
+      fontSize: s(14),
+      fontWeight: "600",
+      color: brand.danger,
+      textAlign: "center",
     },
     closeBtn: {
       borderWidth: 1,
