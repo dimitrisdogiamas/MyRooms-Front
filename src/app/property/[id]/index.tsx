@@ -1,5 +1,5 @@
-import { Booking, BookingsList } from "@/components/BookingsList";
 import { BookingInfoModal } from "@/components/BookingInfoModal";
+import { Booking, BookingsList } from "@/components/BookingsList";
 import { DismissKeyboard } from "@/components/DismissKeyboard";
 import { ExpensesProp } from "@/components/ExpensesProp";
 import { PropertyOverviewModal } from "@/components/PropertyOverviewModal";
@@ -24,10 +24,11 @@ import { supabase } from "@/lib/supabase";
 import { fs } from "@/lib/typography";
 import type { YearOverview } from "@/lib/yearOverview";
 import { getYearOverview } from "@/lib/yearOverview";
-import { Stack, useLocalSearchParams, router } from "expo-router";
+import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  Dimensions,
   Modal,
   Platform,
   Pressable,
@@ -36,7 +37,6 @@ import {
   Text,
   TextInput,
   View,
-  Dimensions,
 } from "react-native";
 import { Calendar } from "react-native-calendars";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -164,6 +164,8 @@ export default function PropertyScreen() {
   const [adults, setAdults] = useState(2);
   const [children, setChildren] = useState(2);
   const [bookingPrice, setBookingPrice] = useState("");
+  const [guestInputFocused, setGuestInputFocused] = useState(false);
+  const [priceInputFocused, setPriceInputFocused] = useState(false);
   const [notifyArrival, setNotifyArrival] = useState(true);
   const [notifyDeparture, setNotifyDeparture] = useState(true);
   const [savingBooking, setSavingBooking] = useState(false);
@@ -185,7 +187,6 @@ export default function PropertyScreen() {
     () => createStyles(settings.fontScale, brand),
     [settings.fontScale, brand],
   );
-
 
   const yearOptions = useMemo(() => {
     const years = new Set<number>();
@@ -271,7 +272,8 @@ export default function PropertyScreen() {
       getPropertyExpenses(propertyId).catch(() => [] as Expense[]),
     ]);
 
-    let bookingsData: Booking[] | null = (bookingsRes.data as Booking[] | null) ?? null;
+    let bookingsData: Booking[] | null =
+      (bookingsRes.data as Booking[] | null) ?? null;
     let bookingsError = bookingsRes.error;
     if (bookingsError) {
       const fallbackBookings = await supabase
@@ -467,13 +469,9 @@ export default function PropertyScreen() {
 
     setSavingPrice(true);
     try {
-      await applyRoomPriceRange(
-        pricingRoom.id,
-        start,
-        end,
-        amount,
-        { protectBookingNights: true },
-      );
+      await applyRoomPriceRange(pricingRoom.id, start, end, amount, {
+        protectBookingNights: true,
+      });
     } catch (err) {
       setSavingPrice(false);
       console.error(err);
@@ -570,6 +568,8 @@ export default function PropertyScreen() {
     setAdults(2);
     setChildren(2);
     setBookingPrice("");
+    setGuestInputFocused(false);
+    setPriceInputFocused(false);
     setNotifyArrival(true);
     setNotifyDeparture(true);
     setBookingDraft({
@@ -680,6 +680,8 @@ export default function PropertyScreen() {
     setAdults(2);
     setChildren(2);
     setBookingPrice("");
+    setGuestInputFocused(false);
+    setPriceInputFocused(false);
     setNotifyArrival(true);
     setNotifyDeparture(true);
   }
@@ -774,15 +776,12 @@ export default function PropertyScreen() {
               <Text style={styles.headerPillText}>{"<"} Σπίτια</Text>
             </Pressable>
 
-
             <View style={styles.yearMenu}>
               <Pressable
                 style={[styles.headerPill, styles.headerSide]}
                 onPress={() => setYearMenuOpen((prev) => !prev)}
               >
-                <Text style={styles.headerPillText}>
-                  {selectedYear} ▾
-                </Text>
+                <Text style={styles.headerPillText}>{selectedYear} ▾</Text>
               </Pressable>
 
               {yearMenuOpen ? (
@@ -848,195 +847,197 @@ export default function PropertyScreen() {
           keyboardDismissMode="on-drag"
         >
           <DismissKeyboard>
-          {rooms.length === 0 ? (
-            <View style={styles.panel}>
-              <Text style={styles.hint}>
-                Πρόσθεσε ένα δωμάτιο για να εμφανιστεί το ημερολόγιό του.
-              </Text>
-            </View>
-          ) : (
-            rooms.map((room) => {
-              const start = selectStartByRoom[room.id] ?? null;
-              const roomBookings = bookings.filter(
-                (b) => b.room_id === room.id,
-              );
+            {rooms.length === 0 ? (
+              <View style={styles.panel}>
+                <Text style={styles.hint}>
+                  Πρόσθεσε ένα δωμάτιο για να εμφανιστεί το ημερολόγιό του.
+                </Text>
+              </View>
+            ) : (
+              rooms.map((room) => {
+                const start = selectStartByRoom[room.id] ?? null;
+                const roomBookings = bookings.filter(
+                  (b) => b.room_id === room.id,
+                );
 
-              return (
-                <View key={room.id} style={styles.panel}>
-                  <View style={styles.roomHeader}>
-                    <Pressable
-                      style={styles.deleteRoomButton}
-                      onPress={() => deleteRoom(room)}
-                    >
-                      <Text style={styles.deleteRoomButtonText}>🗑️</Text>
-                    </Pressable>
-                    <Text style={styles.roomHeaderTitle} numberOfLines={1}>
-                      {room.name}
-                    </Text>
-                    <Pressable
-                      style={styles.pricesButton}
-                      onPress={() => openPrices(room)}
-                    >
-                      <Text style={styles.pricesButtonText}>💵</Text>
-                    </Pressable>
-                  </View>
-                  <Text style={styles.hint}>
-                    {start
-                      ? `Έναρξη: ${start} — πάτα ημερομηνία λήξης (min 5 μέρες)`
-                      : "Πάτα ημερομηνία έναρξης, μετά ημερομηνία λήξης"}
-                  </Text>
-
-                  <Calendar
-                    markingType="period"
-                    style={styles.calendar}
-                    theme={calendarTheme}
-                    enableSwipeMonths
-                    hideExtraDays={false}
-                    showSixWeeks={true}
-                    firstDay={1}
-                    markedDates={markedDatesForRoom(room.id)}
-                    dayComponent={({ date, state, marking }) => {
-                      if (!date) {
-                        return <View style={styles.dayCell} />;
-                      }
-
-                      const mark = marking as
-                        | RoomAvailability[string]
-                        | undefined;
-                      const price = getPriceForNight(
-                        roomPrices,
-                        room.id,
-                        date.dateString,
-                      );
-                      const kind = mark?.kind;
-                      const isSplit = kind === "split";
-                      const isDeparture = kind === "departure";
-                      const isArrival = kind === "arrival";
-                      const bg =
-                        kind === "stay" && typeof mark?.color === "string"
-                          ? mark.color
-                          : undefined;
-                      const onStay = Boolean(bg);
-                      const textColor =
-                        isSplit || onStay
-                          ? brand.white
-                          : isArrival
-                            ? brand.white
-                            : state === "today"
-                              ? brand.primary
-                              : brand.ink;
-
-                      return (
-                        <Pressable
-                          style={[
-                            styles.dayCell,
-                            (isDeparture ||
-                              isArrival ||
-                              (!onStay && !isSplit)) &&
-                              styles.dayCellIdle,
-                            bg ? { backgroundColor: bg } : null,
-                            mark?.selected && styles.dayCellSelected,
-                          ]}
-                          onPress={() => handleDayPress(room, date.dateString)}
-                          onLongPress={() =>
-                            handleDayLongPress(room, date.dateString)
-                          }
-                        >
-                          {isSplit ? (
-                            <>
-                              <View
-                                style={[
-                                  StyleSheet.absoluteFill,
-                                  { backgroundColor: brand.calendarBlue },
-                                ]}
-                              />
-                              <View style={styles.daySplitTriangle} />
-                            </>
-                          ) : null}
-                          {isDeparture ? (
-                            <View style={styles.daySplitTriangle} />
-                          ) : null}
-                          {isArrival ? (
-                            <View style={styles.dayArrivalTriangle} />
-                          ) : null}
-                          <Text
-                            style={[styles.dayNumber, { color: textColor }]}
-                          >
-                            {date.day}
-                          </Text>
-                          <Text
-                            style={[
-                              styles.dayPrice,
-                              {
-                                color:
-                                  isSplit || onStay ? brand.white : brand.ink,
-                              },
-                            ]}
-                          >
-                            {price > 0 ? `${price}€` : " "}
-                          </Text>
-                        </Pressable>
-                      );
-                    }}
-                  />
-
-                  <View style={styles.legend}>
-                    <View style={styles.legendItem}>
-                      <View style={styles.dotSplit}>
-                        <View style={styles.dotSplitSand} />
-                        <View style={styles.dotArrivalTeal} />
-                      </View>
-                      <Text style={styles.legendText}>Άφιξη</Text>
-                    </View>
-                    <View style={styles.legendItem}>
-                      <View
-                        style={[
-                          styles.dot,
-                          { backgroundColor: brand.calendarBlue },
-                        ]}
-                      />
-                      <Text style={styles.legendText}>Διαμονή</Text>
-                    </View>
-                    <View style={styles.legendItem}>
-                      <View style={styles.dotSplit}>
-                        <View style={styles.dotSplitSand} />
-                        <View style={styles.dotSplitOrange} />
-                      </View>
-                      <Text style={styles.legendText}>Αναχώρηση</Text>
-                    </View>
-                    <View style={styles.legendItem}>
-                      <View style={styles.dotSplit}>
-                        <View style={styles.dotSplitTeal} />
-                        <View style={styles.dotSplitOrange} />
-                      </View>
-                      <Text style={styles.legendText}>Αφίξη & Αναχώρηση</Text>
-                    </View>
-                  </View>
-
-                  <Text style={styles.hint}>
-                    Κρατήστε πατημένο σε μια ημερομηνία για σημείωση (αλλαγή
-                    σεντονιών / πρόωρη αναχώρηση).
-                  </Text>
-
-                  <Text style={styles.incomeText}>
-                    Σύνολο εσόδων δωματίου:
-                    {`${getRoomIncome(bookings, roomPrices, room.id).toFixed(2)}€`}
-                  </Text>
-
-                  <View style={styles.bookingsList}>
-                    <Pressable
-                      onPress={() => setBookingRoomId(room.id)}
-                      style={styles.bookingsButton}
-                    >
-                      <Text style={styles.bookingListTitle}>
-                        Κρατήσεις ({roomBookings.length})
+                return (
+                  <View key={room.id} style={styles.panel}>
+                    <View style={styles.roomHeader}>
+                      <Pressable
+                        style={styles.deleteRoomButton}
+                        onPress={() => deleteRoom(room)}
+                      >
+                        <Text style={styles.deleteRoomButtonText}>🗑️</Text>
+                      </Pressable>
+                      <Text style={styles.roomHeaderTitle} numberOfLines={1}>
+                        {room.name}
                       </Text>
-                    </Pressable>
+                      <Pressable
+                        style={styles.pricesButton}
+                        onPress={() => openPrices(room)}
+                      >
+                        <Text style={styles.pricesButtonText}>💵</Text>
+                      </Pressable>
+                    </View>
+                    <Text style={styles.hint}>
+                      {start
+                        ? `Έναρξη: ${start} — πάτα ημερομηνία λήξης (min 5 μέρες)`
+                        : "Πάτα ημερομηνία έναρξης, μετά ημερομηνία λήξης"}
+                    </Text>
+
+                    <Calendar
+                      markingType="period"
+                      style={styles.calendar}
+                      theme={calendarTheme}
+                      enableSwipeMonths
+                      hideExtraDays={false}
+                      showSixWeeks={true}
+                      firstDay={1}
+                      markedDates={markedDatesForRoom(room.id)}
+                      dayComponent={({ date, state, marking }) => {
+                        if (!date) {
+                          return <View style={styles.dayCell} />;
+                        }
+
+                        const mark = marking as
+                          | RoomAvailability[string]
+                          | undefined;
+                        const price = getPriceForNight(
+                          roomPrices,
+                          room.id,
+                          date.dateString,
+                        );
+                        const kind = mark?.kind;
+                        const isSplit = kind === "split";
+                        const isDeparture = kind === "departure";
+                        const isArrival = kind === "arrival";
+                        const bg =
+                          kind === "stay" && typeof mark?.color === "string"
+                            ? mark.color
+                            : undefined;
+                        const onStay = Boolean(bg);
+                        const textColor =
+                          isSplit || onStay
+                            ? brand.white
+                            : isArrival
+                              ? brand.ink
+                              : state === "today"
+                                ? brand.primary
+                                : brand.ink;
+
+                        return (
+                          <Pressable
+                            style={[
+                              styles.dayCell,
+                              (isDeparture ||
+                                isArrival ||
+                                (!onStay && !isSplit)) &&
+                                styles.dayCellIdle,
+                              bg ? { backgroundColor: bg } : null,
+                              mark?.selected && styles.dayCellSelected,
+                            ]}
+                            onPress={() =>
+                              handleDayPress(room, date.dateString)
+                            }
+                            onLongPress={() =>
+                              handleDayLongPress(room, date.dateString)
+                            }
+                          >
+                            {isSplit ? (
+                              <>
+                                <View
+                                  style={[
+                                    StyleSheet.absoluteFill,
+                                    { backgroundColor: brand.calendarBlue },
+                                  ]}
+                                />
+                                <View style={styles.daySplitTriangle} />
+                              </>
+                            ) : null}
+                            {isDeparture ? (
+                              <View style={styles.daySplitTriangle} />
+                            ) : null}
+                            {isArrival ? (
+                              <View style={styles.dayArrivalTriangle} />
+                            ) : null}
+                            <Text
+                              style={[styles.dayNumber, { color: textColor }]}
+                            >
+                              {date.day}
+                            </Text>
+                            <Text
+                              style={[
+                                styles.dayPrice,
+                                {
+                                  color:
+                                    isSplit || onStay ? brand.white : brand.ink,
+                                },
+                              ]}
+                            >
+                              {price > 0 ? `${price}€` : " "}
+                            </Text>
+                          </Pressable>
+                        );
+                      }}
+                    />
+
+                    <View style={styles.legend}>
+                      <View style={styles.legendItem}>
+                        <View style={styles.dotSplit}>
+                          <View style={styles.dotSplitSand} />
+                          <View style={styles.dotArrivalTeal} />
+                        </View>
+                        <Text style={styles.legendText}>Άφιξη</Text>
+                      </View>
+                      <View style={styles.legendItem}>
+                        <View
+                          style={[
+                            styles.dot,
+                            { backgroundColor: brand.calendarBlue },
+                          ]}
+                        />
+                        <Text style={styles.legendText}>Διαμονή</Text>
+                      </View>
+                      <View style={styles.legendItem}>
+                        <View style={styles.dotSplit}>
+                          <View style={styles.dotSplitSand} />
+                          <View style={styles.dotSplitOrange} />
+                        </View>
+                        <Text style={styles.legendText}>Αναχώρηση</Text>
+                      </View>
+                      <View style={styles.legendItem}>
+                        <View style={styles.dotSplit}>
+                          <View style={styles.dotSplitTeal} />
+                          <View style={styles.dotSplitOrange} />
+                        </View>
+                        <Text style={styles.legendText}>Αφίξη & Αναχώρηση</Text>
+                      </View>
+                    </View>
+
+                    <Text style={styles.hint}>
+                      Κρατήστε πατημένο σε μια ημερομηνία για σημείωση (αλλαγή
+                      σεντονιών / πρόωρη αναχώρηση).
+                    </Text>
+
+                    <Text style={styles.incomeText}>
+                      Σύνολο εσόδων δωματίου:
+                      {`${getRoomIncome(bookings, roomPrices, room.id).toFixed(2)}€`}
+                    </Text>
+
+                    <View style={styles.bookingsList}>
+                      <Pressable
+                        onPress={() => setBookingRoomId(room.id)}
+                        style={styles.bookingsButton}
+                      >
+                        <Text style={styles.bookingListTitle}>
+                          Κρατήσεις ({roomBookings.length})
+                        </Text>
+                      </Pressable>
+                    </View>
                   </View>
-                </View>
-              );
-            })
-          )}
+                );
+              })
+            )}
           </DismissKeyboard>
         </ScrollView>
       </SafeAreaView>
@@ -1202,8 +1203,7 @@ export default function PropertyScreen() {
                     const parsed = Number.parseFloat(
                       bookingPrice.replace(",", "."),
                     );
-                    const hasPrice =
-                      Number.isFinite(parsed) && parsed > 0;
+                    const hasPrice = Number.isFinite(parsed) && parsed > 0;
                     const missing = bookingHasMissingPrices(
                       {
                         id: "draft",
@@ -1223,22 +1223,30 @@ export default function PropertyScreen() {
                   })()}
                 </Text>
 
-                <TextInput
-                  style={[
-                    styles.bookingGuestInput,
-                    {
-                      textAlign: guestName.trim() ? "left" : "center",
-                    },
-                  ]}
-                  placeholder="Όνομα πελάτη"
-                  placeholderTextColor={brand.claySoft}
-                  value={guestName}
-                  onChangeText={setGuestName}
-                />
+                <View style={styles.bookingGuestInputWrap}>
+                  {!guestName && !guestInputFocused ? (
+                    <Text
+                      pointerEvents="none"
+                      style={styles.bookingGuestPlaceholder}
+                    >
+                      Όνομα πελάτη
+                    </Text>
+                  ) : null}
+                  <TextInput
+                    style={styles.bookingGuestInput}
+                    value={guestName}
+                    onChangeText={setGuestName}
+                    onFocus={() => setGuestInputFocused(true)}
+                    onBlur={() => setGuestInputFocused(false)}
+                    textAlign="left"
+                  />
+                </View>
 
                 <View style={[styles.guestsBox, styles.guestsRow]}>
                   <View style={styles.guestStepper}>
-                    <Text style={[styles.stepperLabel, styles.guestStepperLabel]}>
+                    <Text
+                      style={[styles.stepperLabel, styles.guestStepperLabel]}
+                    >
                       Ενήλικες
                     </Text>
                     <View style={styles.stepperControls}>
@@ -1259,7 +1267,9 @@ export default function PropertyScreen() {
                   </View>
 
                   <View style={styles.guestStepper}>
-                    <Text style={[styles.stepperLabel, styles.guestStepperLabel]}>
+                    <Text
+                      style={[styles.stepperLabel, styles.guestStepperLabelChildren]}
+                    >
                       Παιδιά
                     </Text>
                     <View style={styles.stepperControls}>
@@ -1269,7 +1279,7 @@ export default function PropertyScreen() {
                       >
                         <Text style={styles.stepperBtnText}>−</Text>
                       </Pressable>
-                      <Text style={styles.stepperValue}>{children}</Text>
+                      <Text style={styles.stepperValueChildren}>{children}</Text>
                       <Pressable
                         style={styles.stepperBtn}
                         onPress={() => setChildren((v) => Math.min(4, v + 1))}
@@ -1284,19 +1294,25 @@ export default function PropertyScreen() {
                   <Text style={styles.bookingPriceLabel}>
                     Κόστος διανυκτέρευσης (€)
                   </Text>
-                  <TextInput
-                    style={[
-                      styles.bookingGuestInput,
-                      {
-                        textAlign: bookingPrice.trim() ? "left" : "center",
-                      },
-                    ]}
-                    placeholder="π.χ. 55"
-                    placeholderTextColor={brand.claySoft}
-                    value={bookingPrice}
-                    onChangeText={setBookingPrice}
-                    keyboardType="decimal-pad"
-                  />
+                  <View style={styles.bookingGuestInputWrap}>
+                    {!bookingPrice && !priceInputFocused ? (
+                      <Text
+                        pointerEvents="none"
+                        style={styles.bookingGuestPlaceholder}
+                      >
+                        π.χ. 55
+                      </Text>
+                    ) : null}
+                    <TextInput
+                      style={styles.bookingGuestInput}
+                      value={bookingPrice}
+                      onChangeText={setBookingPrice}
+                      onFocus={() => setPriceInputFocused(true)}
+                      onBlur={() => setPriceInputFocused(false)}
+                      keyboardType="decimal-pad"
+                      textAlign="left"
+                    />
+                  </View>
                   <Text style={styles.bookingPriceHint}>
                     Υπερισχύει των οριζόμενων τιμών.
                   </Text>
@@ -1768,6 +1784,7 @@ function createStyles(scale: number, brand: BrandColors) {
       overflow: "hidden",
       padding: 22,
       gap: 12,
+      maxHeight: "85%",
     },
     modalDate: {
       fontSize: s(28),
@@ -1996,6 +2013,11 @@ function createStyles(scale: number, brand: BrandColors) {
       alignItems: "center",
     },
     guestStepperLabel: {
+      color: "#2563eb",
+      textAlign: "center",
+    },
+    guestStepperLabelChildren: {
+      color: "#dc2626",
       textAlign: "center",
     },
     bookingPriceBox: {
@@ -2005,6 +2027,7 @@ function createStyles(scale: number, brand: BrandColors) {
       gap: 8,
     },
     bookingPriceLabel: {
+      textAlign: "center",
       fontSize: s(13),
       color: brand.ink,
       fontWeight: "600",
@@ -2047,21 +2070,40 @@ function createStyles(scale: number, brand: BrandColors) {
       lineHeight: s(20),
     },
     stepperValue: {
+      color: "#2563eb",
       minWidth: 24,
       textAlign: "center",
       fontSize: s(16),
       fontWeight: "700",
-      color: brand.ink,
     },
-    bookingGuestInput: {
+    stepperValueChildren: {
+      color: "#dc2626",
+      fontSize: s(16),
+      fontWeight: "700",
+      textAlign: "center",
+    },
+    bookingGuestInputWrap: {
       borderWidth: 1,
       borderColor: brand.sandDeep,
       borderRadius: 10,
+      backgroundColor: brand.white,
+      justifyContent: "center",
+    },
+    bookingGuestPlaceholder: {
+      position: "absolute",
+      left: 12,
+      right: 12,
+      textAlign: "center",
+      fontSize: s(15),
+      color: brand.claySoft,
+      zIndex: 1,
+    },
+    bookingGuestInput: {
       paddingHorizontal: 12,
       paddingVertical: 10,
       fontSize: s(15),
       color: brand.ink,
-      backgroundColor: brand.white,
+      textAlign: "left",
     },
     checkboxRow: {
       flexDirection: "row",

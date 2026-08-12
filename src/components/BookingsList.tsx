@@ -91,7 +91,9 @@ export const BookingsList = ({
     <FlatList
       data={sortedBookings}
       keyExtractor={(item) => item.id}
-      scrollEnabled={false}
+      style={styles.list}
+      contentContainerStyle={styles.listContent}
+      showsVerticalScrollIndicator={false}
       renderItem={({ item }) => {
         const nights = countNights(item.start_date, item.end_date);
         const cost = getBookingIncome(item, roomPrices);
@@ -135,6 +137,14 @@ function createStyles(scale: number, brand: BrandColors) {
     muted: {
       color: brand.claySoft,
       fontSize: s(14),
+    },
+    list: {
+      flexGrow: 0,
+      maxHeight: 360,
+    },
+    listContent: {
+      paddingBottom: 4,
+      gap: 0,
     },
     card: {
       backgroundColor: brand.white,
