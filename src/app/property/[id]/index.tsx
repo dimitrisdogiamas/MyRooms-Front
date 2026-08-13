@@ -38,6 +38,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { Calendar } from "react-native-calendars";
@@ -171,6 +172,7 @@ export default function PropertyScreen() {
   const [bookingPrice, setBookingPrice] = useState("");
   const [guestInputFocused, setGuestInputFocused] = useState(false);
   const [priceInputFocused, setPriceInputFocused] = useState(false);
+  const [phoneInputFocused, setPhoneInputFocused] = useState(false);
   const [notifyArrival, setNotifyArrival] = useState(true);
   const [notifyDeparture, setNotifyDeparture] = useState(true);
   const [savingBooking, setSavingBooking] = useState(false);
@@ -185,9 +187,15 @@ export default function PropertyScreen() {
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [yearMenuOpen, setYearMenuOpen] = useState(false);
+  const [deposit, setDeposit] = useState("");
+  const [settlement, setSettlement] = useState("");
+  const [phone, setPhone] = useState("");
+
 
   const { settings } = useSettings();
   const brand = useBrand();
+  const { width: winWidth, height: winHeight } = useWindowDimensions();
+  const isCompact = winWidth < 380;
   const styles = useMemo(
     () => createStyles(settings.fontScale, brand),
     [settings.fontScale, brand],
@@ -216,6 +224,45 @@ export default function PropertyScreen() {
 
     return [...years].sort((a, b) => b - a);
   }, [bookings, roomPrices, currentYear]);
+
+  const draftTotalCost = useMemo(() => {
+    if (!bookingDraft) return 0;
+    const nights = countNights(
+      bookingDraft.startDate,
+      bookingDraft.endDate,
+    );
+    const parsed = Number.parseFloat(bookingPrice.replace(",", "."));
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed * nights;
+    }
+    return getBookingIncome(
+      {
+        id: "draft",
+        room_id: bookingDraft.room.id,
+        start_date: bookingDraft.startDate,
+        end_date: bookingDraft.endDate,
+      },
+      roomPrices,
+    );
+  }, [bookingDraft, bookingPrice, roomPrices]);
+
+  const draftDeposit = Number.parseFloat(deposit.replace(",", ".")) || 0;
+  const draftRemaining = Math.max(0, draftTotalCost - draftDeposit);
+
+  const draftHasMissingPrice = useMemo(() => {
+    if (!bookingDraft) return false;
+    const parsed = Number.parseFloat(bookingPrice.replace(",", "."));
+    if (Number.isFinite(parsed) && parsed > 0) return false;
+    return bookingHasMissingPrices(
+      {
+        id: "draft",
+        room_id: bookingDraft.room.id,
+        start_date: bookingDraft.startDate,
+        end_date: bookingDraft.endDate,
+      },
+      roomPrices,
+    );
+  }, [bookingDraft, bookingPrice, roomPrices]);
 
   const fetchPropertyData = useCallback(async () => {
     setLoading(true);
@@ -265,7 +312,7 @@ export default function PropertyScreen() {
       supabase
         .from("bookings")
         .select(
-          "id, room_id, start_date, end_date, departure_note, guest_name, adults, children",
+          "id, room_id, start_date, end_date, departure_note, guest_name, adults, children, deposit, settlement, phone",
         )
         .in("room_id", roomIds)
         .order("start_date", { ascending: true }),
@@ -283,6 +330,17 @@ export default function PropertyScreen() {
     if (bookingsError) {
       const fallbackBookings = await supabase
         .from("bookings")
+        .select(
+          "id, room_id, start_date, end_date, departure_note, guest_name, adults, children",
+        )
+        .in("room_id", roomIds)
+        .order("start_date", { ascending: true });
+      bookingsData = (fallbackBookings.data as Booking[] | null) ?? null;
+      bookingsError = fallbackBookings.error;
+    }
+    if (bookingsError) {
+      const fallbackBookings = await supabase
+        .from("bookings")
         .select("id, room_id, start_date, end_date, departure_note, guest_name")
         .in("room_id", roomIds)
         .order("start_date", { ascending: true });
@@ -295,7 +353,18 @@ export default function PropertyScreen() {
       setBookings([]);
       setRoomAvailability({});
     } else {
-      const nextBookings = bookingsData ?? [];
+      const nextBookings = (bookingsData ?? []).map((row) => ({
+        ...row,
+        deposit:
+          row.deposit == null || row.deposit === undefined
+            ? null
+            : Number(row.deposit),
+        settlement:
+          row.settlement == null || row.settlement === undefined
+            ? null
+            : Number(row.settlement),
+        phone: row.phone ?? null,
+      }));
       setBookings(nextBookings);
       setRoomAvailability(buildAvailabilityFromBookings(nextBookings, brand));
     }
@@ -573,8 +642,12 @@ export default function PropertyScreen() {
     setAdults(2);
     setChildren(2);
     setBookingPrice("");
+    setDeposit("");
+    setSettlement("");
+    setPhone("");
     setGuestInputFocused(false);
     setPriceInputFocused(false);
+    setPhoneInputFocused(false);
     setNotifyArrival(true);
     setNotifyDeparture(true);
     setBookingDraft({
@@ -595,6 +668,13 @@ export default function PropertyScreen() {
     };
     const parsedPrice = Number.parseFloat(bookingPrice.replace(",", "."));
     const hasUserPrice = Number.isFinite(parsedPrice) && parsedPrice > 0;
+    const depositValue = Number.parseFloat(deposit.replace(",", ".")) || 0;
+    const settlementParsed = Number.parseFloat(settlement.replace(",", "."));
+    const settlementValue =
+      Number.isFinite(settlementParsed) && settlementParsed >= 0
+        ? settlementParsed
+        : 0;
+    const phoneValue = phone.trim() || null;
 
     if (bookingHasMissingPrices(draftBooking, roomPrices) && !hasUserPrice) {
       Alert.alert(
@@ -605,10 +685,16 @@ export default function PropertyScreen() {
     }
 
     setSavingBooking(true);
+    const paymentFields = {
+      deposit: depositValue,
+      settlement: settlementValue,
+      phone: phoneValue,
+    };
     const base = {
       room_id: bookingDraft.room.id,
       start_date: bookingDraft.startDate,
       end_date: bookingDraft.endDate,
+      ...paymentFields,
     };
 
     let { error } = await supabase.from("bookings").insert([
@@ -633,8 +719,29 @@ export default function PropertyScreen() {
       ]);
       error = withoutGuests.error;
       if (error) {
-        const fallback = await supabase.from("bookings").insert([base]);
-        error = fallback.error;
+        const withoutPayment = await supabase.from("bookings").insert([
+          {
+            room_id: bookingDraft.room.id,
+            start_date: bookingDraft.startDate,
+            end_date: bookingDraft.endDate,
+            guest_name: guestName.trim() || null,
+            notify_arrival: notifyArrival,
+            notify_departure: notifyDeparture,
+            adults,
+            children,
+          },
+        ]);
+        error = withoutPayment.error;
+        if (error) {
+          const fallback = await supabase.from("bookings").insert([
+            {
+              room_id: bookingDraft.room.id,
+              start_date: bookingDraft.startDate,
+              end_date: bookingDraft.endDate,
+            },
+          ]);
+          error = fallback.error;
+        }
       }
     }
 
@@ -685,8 +792,12 @@ export default function PropertyScreen() {
     setAdults(2);
     setChildren(2);
     setBookingPrice("");
+    setDeposit("");
+    setSettlement("");
+    setPhone("");
     setGuestInputFocused(false);
     setPriceInputFocused(false);
+    setPhoneInputFocused(false);
     setNotifyArrival(true);
     setNotifyDeparture(true);
   }
@@ -1166,66 +1277,31 @@ export default function PropertyScreen() {
         onRequestClose={closeBookingDraft}
       >
         <View style={styles.modalOverlay}>
-          <DismissKeyboard style={styles.bookingModalPanel}>
+          <DismissKeyboard
+            style={[
+              styles.bookingModalPanel,
+              {
+                width: Math.min(winWidth - 40, 440),
+                maxHeight: winHeight * 0.9,
+              },
+            ]}
+          >
             <Text style={styles.bookingModalTitle}>Νέα κράτηση</Text>
             {bookingDraft ? (
-              <>
+              <ScrollView
+                style={styles.bookingModalScroll}
+                contentContainerStyle={styles.bookingModalScrollContent}
+                keyboardShouldPersistTaps="always"
+                keyboardDismissMode="on-drag"
+                showsVerticalScrollIndicator={false}
+              >
                 <Text style={styles.bookingModalDates}>
-                  {bookingDraft.room.name} ·{" "}
                   {formatDisplayDate(bookingDraft.startDate)} →{" "}
-                  {formatDisplayDate(bookingDraft.endDate)} ·{" "}
+                  {formatDisplayDate(bookingDraft.endDate)}
+                </Text>
+                <Text style={styles.bookingModalDates}>
                   {countNights(bookingDraft.startDate, bookingDraft.endDate)}{" "}
                   διανυκτ.
-                </Text>
-
-                <Text style={styles.bookingModalCost}>
-                  Εκτιμώμενο κόστος:{" "}
-                  <Text style={styles.bookingModalCostValue}>
-                    {(() => {
-                      const nights = countNights(
-                        bookingDraft.startDate,
-                        bookingDraft.endDate,
-                      );
-                      const parsed = Number.parseFloat(
-                        bookingPrice.replace(",", "."),
-                      );
-                      if (Number.isFinite(parsed) && parsed > 0) {
-                        return (parsed * nights).toFixed(2);
-                      }
-                      return getBookingIncome(
-                        {
-                          id: "draft",
-                          room_id: bookingDraft.room.id,
-                          start_date: bookingDraft.startDate,
-                          end_date: bookingDraft.endDate,
-                        },
-                        roomPrices,
-                      ).toFixed(2);
-                    })()}
-                    €
-                  </Text>
-                  {(() => {
-                    const parsed = Number.parseFloat(
-                      bookingPrice.replace(",", "."),
-                    );
-                    const hasPrice = Number.isFinite(parsed) && parsed > 0;
-                    const missing = bookingHasMissingPrices(
-                      {
-                        id: "draft",
-                        room_id: bookingDraft.room.id,
-                        start_date: bookingDraft.startDate,
-                        end_date: bookingDraft.endDate,
-                      },
-                      roomPrices,
-                    );
-                    if (!missing || hasPrice) return null;
-                    return (
-                      <Text style={styles.bookingMissingPriceHint}>
-                        {" "}
-                        (υπάρχουν μέρες χωρίς ορισμένη τιμή)
-                      </Text>
-                    );
-                  })()}
                 </Text>
 
                 <View style={styles.bookingGuestInputWrap}>
@@ -1243,7 +1319,27 @@ export default function PropertyScreen() {
                     onChangeText={setGuestName}
                     onFocus={() => setGuestInputFocused(true)}
                     onBlur={() => setGuestInputFocused(false)}
-                    textAlign="left"
+                    textAlign={guestInputFocused ? "left" : "center"}
+                  />
+                </View>
+
+                <View style={styles.bookingGuestInputWrap}>
+                  {!phone && !phoneInputFocused ? (
+                    <Text
+                      pointerEvents="none"
+                      style={styles.bookingGuestPlaceholder}
+                    >
+                      Τηλέφωνο
+                    </Text>
+                  ) : null}
+                  <TextInput
+                    style={styles.bookingGuestInput}
+                    value={phone}
+                    onChangeText={setPhone}
+                    onFocus={() => setPhoneInputFocused(true)}
+                    onBlur={() => setPhoneInputFocused(false)}
+                    keyboardType="phone-pad"
+                    textAlign={phoneInputFocused ? "left" : "center"}
                   />
                 </View>
 
@@ -1295,32 +1391,70 @@ export default function PropertyScreen() {
                   </View>
                 </View>
 
-                <View style={styles.bookingPriceBox}>
-                  <Text style={styles.bookingPriceLabel}>
-                    Κόστος διανυκτέρευσης (€)
-                  </Text>
-                  <View style={styles.bookingGuestInputWrap}>
-                    {!bookingPrice && !priceInputFocused ? (
-                      <Text
-                        pointerEvents="none"
-                        style={styles.bookingGuestPlaceholder}
-                      >
-                        π.χ. 55
+                <View style={styles.bookingCostPanel}>
+                  <View
+                    style={[
+                      styles.bookingPaymentRow,
+                      isCompact && styles.bookingPaymentRowStacked,
+                    ]}
+                  >
+                    <View style={styles.bookingPaymentCol}>
+                      <Text style={styles.bookingPaymentLabel}>
+                        Κόστος διαν/σης (€)
                       </Text>
-                    ) : null}
-                    <TextInput
-                      style={styles.bookingGuestInput}
-                      value={bookingPrice}
-                      onChangeText={setBookingPrice}
-                      onFocus={() => setPriceInputFocused(true)}
-                      onBlur={() => setPriceInputFocused(false)}
-                      keyboardType="decimal-pad"
-                      textAlign="left"
-                    />
+                      <TextInput
+                        style={styles.bookingPaymentInput}
+                        value={bookingPrice}
+                        onChangeText={setBookingPrice}
+                        onFocus={() => setPriceInputFocused(true)}
+                        onBlur={() => setPriceInputFocused(false)}
+                        keyboardType="decimal-pad"
+                        placeholder="π.χ. 55"
+                        placeholderTextColor={brand.claySoft}
+                        textAlign={priceInputFocused ? "left" : "center"}
+                      />
+                    </View>
+                    <View style={styles.bookingPaymentCol}>
+                      <Text style={styles.bookingPaymentLabel}>
+                        Συνολικό κόστος
+                      </Text>
+                      <Text style={styles.bookingPaymentRemaining}>
+                        {draftTotalCost.toFixed(2)}€
+                      </Text>
+                    </View>
                   </View>
-                  <Text style={styles.bookingPriceHint}>
-                    Υπερισχύει των οριζόμενων τιμών.
-                  </Text>
+                  {draftHasMissingPrice ? (
+                    <Text style={styles.bookingMissingPriceHint}>
+                      (υπάρχουν μέρες χωρίς ορισμένη τιμή)
+                    </Text>
+                  ) : null}
+
+                  <View
+                    style={[
+                      styles.bookingPaymentRow,
+                      isCompact && styles.bookingPaymentRowStacked,
+                    ]}
+                  >
+                    <View style={styles.bookingPaymentCol}>
+                      <Text style={styles.bookingPaymentLabel}>
+                        Προκαταβολή
+                      </Text>
+                      <TextInput
+                        style={styles.bookingPaymentInput}
+                        value={deposit}
+                        onChangeText={setDeposit}
+                        keyboardType="decimal-pad"
+                        placeholder="0"
+                        placeholderTextColor={brand.claySoft}
+                      />
+                    </View>
+                    <View style={styles.bookingPaymentCol}>
+                      <Text style={styles.bookingPaymentLabel}>Υπόλοιπο</Text>
+                      <Text style={styles.bookingPaymentRemaining}>
+                        {draftRemaining.toFixed(2)}€
+                      </Text>
+                    </View>
+                  </View>
                 </View>
 
                 <Pressable
@@ -1381,7 +1515,7 @@ export default function PropertyScreen() {
                     </Text>
                   </Pressable>
                 </View>
-              </>
+              </ScrollView>
             ) : null}
           </DismissKeyboard>
         </View>
@@ -2014,6 +2148,14 @@ function createStyles(scale: number, brand: BrandColors) {
       overflow: "hidden",
       padding: 22,
       gap: 12,
+      alignSelf: "center",
+    },
+    bookingModalScroll: {
+      flexGrow: 0,
+    },
+    bookingModalScrollContent: {
+      gap: 12,
+      paddingBottom: 8,
     },
     bookingModalTitle: {
       textAlign: "center",
@@ -2023,6 +2165,7 @@ function createStyles(scale: number, brand: BrandColors) {
       fontFamily: Fonts?.serif,
     },
     bookingModalDates: {
+      textAlign: "center",
       fontSize: s(13),
       color: brand.claySoft,
       fontFamily: Fonts?.mono,
@@ -2128,11 +2271,16 @@ function createStyles(scale: number, brand: BrandColors) {
       textAlign: "center",
     },
     bookingGuestInputWrap: {
-      borderWidth: 1,
-      borderColor: brand.sandDeep,
+      borderWidth: 1.5,
+      borderColor: brand.primary,
       borderRadius: 10,
       backgroundColor: brand.white,
       justifyContent: "center",
+      shadowColor: brand.primary,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.22,
+      shadowRadius: 5,
+      elevation: 4,
     },
     bookingGuestPlaceholder: {
       position: "absolute",
@@ -2148,7 +2296,6 @@ function createStyles(scale: number, brand: BrandColors) {
       paddingVertical: 10,
       fontSize: s(15),
       color: brand.ink,
-      textAlign: "left",
     },
     checkboxRow: {
       flexDirection: "row",
@@ -2260,6 +2407,53 @@ function createStyles(scale: number, brand: BrandColors) {
     yearDropdownItemTextActive: {
       color: brand.primary,
       fontWeight: "700",
+    },
+
+    bookingCostPanel: {
+      backgroundColor: brand.sand,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: brand.sandDeep,
+      padding: 12,
+      gap: 10,
+    },
+    bookingPaymentRow: {
+      flexDirection: "row",
+      gap: 12,
+      flexWrap: "wrap",
+    },
+    bookingPaymentRowStacked: {
+      flexDirection: "column",
+    },
+    bookingPaymentCol: {
+      flex: 1,
+      minWidth: 120,
+      gap: 4,
+    },
+    bookingPaymentLabel: {
+      textAlign: "center",
+      fontSize: s(12),
+      fontWeight: "700",
+      color: brand.ink,
+    },
+    bookingPaymentInput: {
+      textAlign: "center",
+      borderWidth: 1,
+      borderColor: brand.sandDeep,
+      borderRadius: 8,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      fontSize: s(14),
+      color: brand.ink,
+      backgroundColor: brand.white,
+      width: "100%",
+    },
+    bookingPaymentRemaining: {
+      textAlign: "center",
+      fontSize: s(16),
+      fontWeight: "700",
+      color: brand.primary,
+      paddingVertical: 8,
     },
   });
 }

@@ -179,6 +179,19 @@ export function BookingInfoModal({
             </Text>
             <Text style={styles.line}>{nights} διανυκτερεύσεις</Text>
             <Text style={styles.cost}>Κόστος: {cost.toFixed(2)}€</Text>
+            {booking.deposit != null && Number(booking.deposit) > 0 ? (
+              <Text style={styles.line}>
+                Προκαταβολή: {Number(booking.deposit).toFixed(2)}€
+              </Text>
+            ) : null}
+            {booking.settlement != null && Number(booking.settlement) > 0 ? (
+              <Text style={styles.line}>
+                Εξόφληση: {Number(booking.settlement).toFixed(2)}€
+              </Text>
+            ) : null}
+            {booking.phone ? (
+              <Text style={styles.line}>Τηλ: {booking.phone}</Text>
+            ) : null}
           </View>
 
           <Pressable
