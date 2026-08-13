@@ -17,6 +17,7 @@ import {
   getBookingIncome,
   getPriceForNight,
   getRoomIncome,
+  isBookingCoveredPrice,
   upsertRoomPriceForStay,
   type RoomPricing,
 } from "@/lib/roomPricing";
@@ -36,6 +37,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { Calendar } from "react-native-calendars";
@@ -131,6 +133,9 @@ function buildAvailabilityFromBookings(
 
   return result;
 }
+
+const windowWidth = Dimensions.get("window").width;
+const windowHeight = Dimensions.get("window").height;
 
 export default function PropertyScreen() {
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
@@ -498,6 +503,8 @@ export default function PropertyScreen() {
   async function deleteRoomPrice(priceId: string) {
     try {
       await deleteRoomPriceProtectingBookings(priceId);
+      setRoomPrices((prev) => prev.filter((p) => p.id !== priceId));
+      await fetchPropertyData();
     } catch (err) {
       console.error(err);
       const message =
@@ -510,8 +517,6 @@ export default function PropertyScreen() {
       Alert.alert("Σφάλμα", message);
       return;
     }
-
-    await fetchPropertyData();
   }
 
   async function handleDayPress(room: Room, dateString: string) {
@@ -1389,103 +1394,122 @@ export default function PropertyScreen() {
         onRequestClose={() => setPricingRoom(null)}
       >
         <View style={styles.modalOverlay}>
-          <DismissKeyboard style={styles.modalPanel}>
-            <Text style={styles.modalDate}>Τιμές — {pricingRoom?.name}</Text>
+          <View style={styles.pricingModalPanel}>
+            <ScrollView
+              style={styles.pricingModalScroll}
+              contentContainerStyle={styles.pricingModalScrollContent}
+              keyboardShouldPersistTaps="always"
+              keyboardDismissMode="on-drag"
+              showsVerticalScrollIndicator
+            >
+              <Text style={styles.modalDate}>Τιμές — {pricingRoom?.name}</Text>
 
-            {roomPrices.filter((p) => p.room_id === pricingRoom?.id).length ===
-            0 ? (
-              <Text style={styles.modalSubtitle}>Δεν έχουν οριστεί τιμές.</Text>
-            ) : (
-              roomPrices
-                .filter((p) => p.room_id === pricingRoom?.id)
-                .map((price) => (
-                  <View key={price.id} style={styles.priceRow}>
-                    <Text style={styles.priceRowText}>
-                      {formatDisplayDate(price.start_date)} →{" "}
-                      {formatDisplayDate(price.end_date)}
-                      {"  "}
-                      {price.price_per_night.toFixed(2)}€/διαν.
-                    </Text>
-                    <Pressable
-                      style={styles.priceDelete}
-                      onPress={() => deleteRoomPrice(price.id)}
-                    >
-                      <Text style={styles.priceDeleteText}>Διαγραφή</Text>
-                    </Pressable>
-                  </View>
-                ))
-            )}
-
-            <Text style={styles.priceSectionTitle}>Νέα περίοδος τιμής</Text>
-
-            <View style={styles.priceDateRow}>
-              <View style={styles.priceDateField}>
-                <TextInput
-                  style={styles.priceInput}
-                  placeholder="dd/mm/yyyy"
-                  placeholderTextColor={brand.claySoft}
-                  value={priceStart ? formatDisplayDate(priceStart) : ""}
-                  onChangeText={(text) => {
-                    setPriceStart(parseDateInput(text) ?? text);
-                  }}
-                />
-                <Pressable
-                  style={styles.priceCalendarBtn}
-                  onPress={() => setPriceDateField("start")}
-                >
-                  <Text>📅</Text>
-                </Pressable>
-              </View>
-              <View style={styles.priceDateField}>
-                <TextInput
-                  style={styles.priceInput}
-                  placeholder="dd/mm/yyyy"
-                  placeholderTextColor={brand.claySoft}
-                  value={priceEnd ? formatDisplayDate(priceEnd) : ""}
-                  onChangeText={(text) => {
-                    setPriceEnd(parseDateInput(text) ?? text);
-                  }}
-                />
-                <Pressable
-                  style={styles.priceCalendarBtn}
-                  onPress={() => setPriceDateField("end")}
-                >
-                  <Text>📅</Text>
-                </Pressable>
-              </View>
-            </View>
-
-            <TextInput
-              style={styles.priceInput}
-              placeholder="€ / διανυκτέρευση"
-              placeholderTextColor={brand.claySoft}
-              value={priceAmount}
-              onChangeText={setPriceAmount}
-              keyboardType="decimal-pad"
-            />
-
-            <View style={styles.priceActions}>
-              <Pressable
-                style={[styles.modalCancel, styles.priceActionBtn]}
-                onPress={() => setPricingRoom(null)}
-              >
-                <Text style={styles.modalCancelText}>Κλείσιμο</Text>
-              </Pressable>
-              <Pressable
-                style={[
-                  styles.modalConfirm,
-                  styles.priceActionBtn,
-                  savingPrice && { opacity: 0.6 },
-                ]}
-                onPress={addRoomPrice}
-                disabled={savingPrice}
-              >
-                <Text style={styles.modalConfirmText}>
-                  {savingPrice ? "..." : "Προσθήκη"}
+              {roomPrices.filter(
+                (p) =>
+                  p.room_id === pricingRoom?.id &&
+                  !isBookingCoveredPrice(p, bookings),
+              ).length === 0 ? (
+                <Text style={styles.modalSubtitle}>
+                  Δεν έχουν οριστεί τιμές.
                 </Text>
-              </Pressable>
-            </View>
-          </DismissKeyboard>
+              ) : (
+                roomPrices
+                  .filter(
+                    (p) =>
+                      p.room_id === pricingRoom?.id &&
+                      !isBookingCoveredPrice(p, bookings),
+                  )
+                  .map((price) => (
+                    <View key={price.id} style={styles.priceRow}>
+                      <Text style={styles.priceRowText} numberOfLines={2}>
+                        {formatDisplayDate(price.start_date)} →{" "}
+                        {formatDisplayDate(price.end_date)}
+                        {"  "}
+                        {price.price_per_night.toFixed(2)}€/διαν.
+                      </Text>
+                      <TouchableOpacity
+                        style={styles.priceDelete}
+                        activeOpacity={0.7}
+                        onPress={() => void deleteRoomPrice(price.id)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Text style={styles.priceDeleteText}>Διαγραφή</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))
+              )}
+
+              <Text style={styles.priceSectionTitle}>Νέα περίοδος τιμής</Text>
+
+              <View style={styles.priceDateRow}>
+                <View style={styles.priceDateField}>
+                  <TextInput
+                    style={styles.priceInput}
+                    placeholder="dd/mm/yyyy"
+                    placeholderTextColor={brand.claySoft}
+                    value={priceStart ? formatDisplayDate(priceStart) : ""}
+                    onChangeText={(text) => {
+                      setPriceStart(parseDateInput(text) ?? text);
+                    }}
+                  />
+                  <Pressable
+                    style={styles.priceCalendarBtn}
+                    onPress={() => setPriceDateField("start")}
+                  >
+                    <Text>📅</Text>
+                  </Pressable>
+                </View>
+                <View style={styles.priceDateField}>
+                  <TextInput
+                    style={styles.priceInput}
+                    placeholder="dd/mm/yyyy"
+                    placeholderTextColor={brand.claySoft}
+                    value={priceEnd ? formatDisplayDate(priceEnd) : ""}
+                    onChangeText={(text) => {
+                      setPriceEnd(parseDateInput(text) ?? text);
+                    }}
+                  />
+                  <Pressable
+                    style={styles.priceCalendarBtn}
+                    onPress={() => setPriceDateField("end")}
+                  >
+                    <Text>📅</Text>
+                  </Pressable>
+                </View>
+              </View>
+
+              <TextInput
+                style={styles.priceInput}
+                placeholder="€ / διανυκτέρευση"
+                placeholderTextColor={brand.claySoft}
+                value={priceAmount}
+                onChangeText={setPriceAmount}
+                keyboardType="decimal-pad"
+              />
+
+              <View style={styles.priceActions}>
+                <Pressable
+                  style={[styles.modalCancel, styles.priceActionBtn]}
+                  onPress={() => setPricingRoom(null)}
+                >
+                  <Text style={styles.modalCancelText}>Κλείσιμο</Text>
+                </Pressable>
+                <Pressable
+                  style={[
+                    styles.modalConfirm,
+                    styles.priceActionBtn,
+                    savingPrice && { opacity: 0.6 },
+                  ]}
+                  onPress={addRoomPrice}
+                  disabled={savingPrice}
+                >
+                  <Text style={styles.modalConfirmText}>
+                    {savingPrice ? "..." : "Προσθήκη"}
+                  </Text>
+                </Pressable>
+              </View>
+            </ScrollView>
+          </View>
         </View>
       </Modal>
 
@@ -1786,6 +1810,22 @@ function createStyles(scale: number, brand: BrandColors) {
       gap: 12,
       maxHeight: "85%",
     },
+    pricingModalPanel: {
+      width: windowWidth - 40,
+      height: windowHeight * 0.85,
+      backgroundColor: brand.white,
+      borderRadius: 8,
+      overflow: "hidden",
+      padding: 22,
+      alignSelf: "center",
+    },
+    pricingModalScroll: {
+      flex: 1,
+    },
+    pricingModalScrollContent: {
+      gap: 10,
+      paddingBottom: 16,
+    },
     modalDate: {
       fontSize: s(28),
       fontWeight: "700",
@@ -1855,16 +1895,21 @@ function createStyles(scale: number, brand: BrandColors) {
     },
     priceRowText: {
       flex: 1,
+      flexShrink: 1,
       fontSize: s(13),
       color: brand.ink,
       fontWeight: "600",
     },
     priceDelete: {
+      flexShrink: 0,
+      zIndex: 2,
       borderWidth: 1,
       borderColor: brand.danger,
       borderRadius: 8,
       paddingHorizontal: 8,
       paddingVertical: 6,
+      minHeight: 32,
+      justifyContent: "center",
     },
     priceDeleteText: {
       color: brand.danger,
