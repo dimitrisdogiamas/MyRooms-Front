@@ -26,10 +26,11 @@ import { fs } from "@/lib/typography";
 import type { YearOverview } from "@/lib/yearOverview";
 import { getYearOverview } from "@/lib/yearOverview";
 import { router, Stack, useLocalSearchParams } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Dimensions,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -191,6 +192,24 @@ export default function PropertyScreen() {
   const [settlement, setSettlement] = useState("");
   const [phone, setPhone] = useState("");
 
+  const pricingScrollRef = useRef<ScrollView>(null);
+  const bookingScrollRef = useRef<ScrollView>(null);
+  const bookingCostPanelY = useRef(0);
+
+  function scrollPricingToAmount() {
+    setTimeout(() => {
+      pricingScrollRef.current?.scrollToEnd({ animated: true });
+    }, 120);
+  }
+
+  function scrollBookingToCostPanel() {
+    setTimeout(() => {
+      bookingScrollRef.current?.scrollTo({
+        y: Math.max(0, bookingCostPanelY.current - 24),
+        animated: true,
+      });
+    }, 120);
+  }
 
   const { settings } = useSettings();
   const brand = useBrand();
@@ -1276,7 +1295,10 @@ export default function PropertyScreen() {
         transparent
         onRequestClose={closeBookingDraft}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
           <DismissKeyboard
             style={[
               styles.bookingModalPanel,
@@ -1289,6 +1311,7 @@ export default function PropertyScreen() {
             <Text style={styles.bookingModalTitle}>Νέα κράτηση</Text>
             {bookingDraft ? (
               <ScrollView
+                ref={bookingScrollRef}
                 style={styles.bookingModalScroll}
                 contentContainerStyle={styles.bookingModalScrollContent}
                 keyboardShouldPersistTaps="always"
@@ -1391,7 +1414,12 @@ export default function PropertyScreen() {
                   </View>
                 </View>
 
-                <View style={styles.bookingCostPanel}>
+                <View
+                  style={styles.bookingCostPanel}
+                  onLayout={(e) => {
+                    bookingCostPanelY.current = e.nativeEvent.layout.y;
+                  }}
+                >
                   <View
                     style={[
                       styles.bookingPaymentRow,
@@ -1406,7 +1434,10 @@ export default function PropertyScreen() {
                         style={styles.bookingPaymentInput}
                         value={bookingPrice}
                         onChangeText={setBookingPrice}
-                        onFocus={() => setPriceInputFocused(true)}
+                        onFocus={() => {
+                          setPriceInputFocused(true);
+                          scrollBookingToCostPanel();
+                        }}
                         onBlur={() => setPriceInputFocused(false)}
                         keyboardType="decimal-pad"
                         placeholder="π.χ. 55"
@@ -1443,6 +1474,7 @@ export default function PropertyScreen() {
                         style={styles.bookingPaymentInput}
                         value={deposit}
                         onChangeText={setDeposit}
+                        onFocus={scrollBookingToCostPanel}
                         keyboardType="decimal-pad"
                         placeholder="0"
                         placeholderTextColor={brand.claySoft}
@@ -1518,7 +1550,7 @@ export default function PropertyScreen() {
               </ScrollView>
             ) : null}
           </DismissKeyboard>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <Modal
@@ -1527,9 +1559,13 @@ export default function PropertyScreen() {
         transparent
         onRequestClose={() => setPricingRoom(null)}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
           <View style={styles.pricingModalPanel}>
             <ScrollView
+              ref={pricingScrollRef}
               style={styles.pricingModalScroll}
               contentContainerStyle={styles.pricingModalScrollContent}
               keyboardShouldPersistTaps="always"
@@ -1618,6 +1654,7 @@ export default function PropertyScreen() {
                 placeholderTextColor={brand.claySoft}
                 value={priceAmount}
                 onChangeText={setPriceAmount}
+                onFocus={scrollPricingToAmount}
                 keyboardType="decimal-pad"
               />
 
@@ -1644,7 +1681,7 @@ export default function PropertyScreen() {
               </View>
             </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <Modal
@@ -1958,7 +1995,7 @@ function createStyles(scale: number, brand: BrandColors) {
     },
     pricingModalScrollContent: {
       gap: 10,
-      paddingBottom: 16,
+      paddingBottom: 120,
     },
     modalDate: {
       fontSize: s(28),
@@ -2155,7 +2192,7 @@ function createStyles(scale: number, brand: BrandColors) {
     },
     bookingModalScrollContent: {
       gap: 12,
-      paddingBottom: 8,
+      paddingBottom: 120,
     },
     bookingModalTitle: {
       textAlign: "center",
