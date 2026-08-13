@@ -36,6 +36,29 @@ function periodLengthDays(start: string, end: string): number {
   return n;
 }
 
+/** True if every night in the price row belongs to a booking stay. */
+export function isBookingCoveredPrice(
+  price: RoomPricing,
+  bookings: PricingBooking[],
+): boolean {
+  const start = toDateOnly(price.start_date);
+  const end = toDateOnly(price.end_date);
+  const roomBookings = bookings.filter((b) => b.room_id === price.room_id);
+  if (roomBookings.length === 0) return false;
+
+  let day = start;
+  while (day <= end) {
+    const covered = roomBookings.some((booking) => {
+      const stayStart = toDateOnly(booking.start_date);
+      const checkout = toDateOnly(booking.end_date);
+      return day >= stayStart && day < checkout;
+    });
+    if (!covered) return false;
+    day = addDays(day, 1);
+  }
+  return true;
+}
+
 export function getPriceForNight(
   prices: RoomPricing[],
   roomId: string,
@@ -303,7 +326,7 @@ export async function upsertRoomPriceForStay(
  */
 export async function deleteRoomPriceProtectingBookings(
   priceId: string,
-): Promise<void> {
+): Promise<{ restoredNights: number }> {
   const { data: row, error: fetchError } = await supabase
     .from("rooms_prices")
     .select("id, room_id, start_date, end_date, price_per_night")
@@ -311,7 +334,7 @@ export async function deleteRoomPriceProtectingBookings(
     .maybeSingle();
 
   if (fetchError) throw fetchError;
-  if (!row) return;
+  if (!row) return { restoredNights: 0 };
 
   const roomId = row.room_id as string;
   const start = toDateOnly(String(row.start_date));
@@ -345,7 +368,7 @@ export async function deleteRoomPriceProtectingBookings(
     .eq("id", priceId);
   if (deleteError) throw deleteError;
 
-  if (keepDays.size === 0) return;
+  if (keepDays.size === 0) return { restoredNights: 0 };
 
   const { data: remaining, error: remainingError } = await supabase
     .from("rooms_prices")
@@ -371,10 +394,12 @@ export async function deleteRoomPriceProtectingBookings(
     }
   }
 
-  if (toRestore.size === 0) return;
+  if (toRestore.size === 0) return { restoredNights: keepDays.size };
 
   const { error: insertError } = await supabase
     .from("rooms_prices")
     .insert(collapseDayPrices(roomId, toRestore));
   if (insertError) throw insertError;
+
+  return { restoredNights: toRestore.size };
 }
