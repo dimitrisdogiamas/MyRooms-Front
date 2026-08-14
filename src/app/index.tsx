@@ -723,7 +723,7 @@ function createStyles(scale: number, brand: BrandColors) {
     flexDirection: "row",
     gap: 6,
   },
-  insightChip: {
+    insightChip: {
     flex: 1,
     backgroundColor: brand.sand,
     borderRadius: 8,
@@ -821,13 +821,14 @@ function createStyles(scale: number, brand: BrandColors) {
     fontWeight: "700",
     fontSize: s(14),
   },
-  alertBanner: {
+    alertBanner: {
     backgroundColor: brand.danger,
     borderRadius: 12,
     padding: 16,
     gap: 8,
   },
-  alertText: {
+    alertText: {
+    textAlign: "center",
     color: brand.white,
     fontSize: s(14),
   },

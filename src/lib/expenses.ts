@@ -78,17 +78,31 @@ export function getExpensesTotal(expenses: Expense[]): number {
   return expenses.reduce((total, expense) => total + Number(expense.amount), 0);
 }
 
+export type ExpenseCategoryGroup = {
+  category: string;
+  total: number;
+  items: Expense[];
+};
+
 export function getExpensesTotalByCategory(
   expenses: Expense[],
-): { category: string; total: number }[] {
-  const map = new Map<string, number>();
+): ExpenseCategoryGroup[] {
+  const map = new Map<string, ExpenseCategoryGroup>();
 
   for (const expense of expenses) {
     const key = expense.category?.trim() || "Άλλο";
-    map.set(key, (map.get(key) ?? 0) + Number(expense.amount));
+    const existing = map.get(key);
+    if (existing) {
+      existing.total += Number(expense.amount);
+      existing.items.push(expense);
+    } else {
+      map.set(key, {
+        category: key,
+        total: Number(expense.amount),
+        items: [expense],
+      });
+    }
   }
 
-  return [...map.entries()]
-    .map(([category, total]) => ({ category, total }))
-    .sort((a, b) => b.total - a.total);
+  return [...map.values()].sort((a, b) => b.total - a.total);
 }

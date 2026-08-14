@@ -14,6 +14,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Pressable,
   RefreshControl,
   StyleSheet,
   Text,
@@ -43,6 +44,8 @@ export default function PropertyExpensesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [openCategory, setOpenCategory] = useState<string | null>(null);
+  const [openExpenseId, setOpenExpenseId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!propertyId) return;
@@ -87,16 +90,8 @@ export default function PropertyExpensesScreen() {
         {propertyName ? (
           <Text style={styles.subtitle}>{propertyName}</Text>
         ) : null}
-        <Text style={styles.total}>Σύνολο: {total.toFixed(2)}€</Text>
-        {byCategory.length > 0 ? (
-          <View style={styles.categoryTotals}>
-            {byCategory.map((row) => (
-              <Text key={row.category} style={styles.categoryLine}>
-                {row.category}: {row.total.toFixed(2)}€
-              </Text>
-            ))}
-          </View>
-        ) : null}
+        <Text style={styles.total}>Σύνολο</Text>
+        <Text style={styles.totalValue}>{total.toFixed(2)}€</Text>
       </View>
 
       {loading ? (
@@ -105,8 +100,8 @@ export default function PropertyExpensesScreen() {
         <Text style={styles.error}>{error}</Text>
       ) : (
         <FlatList
-          data={expenses}
-          keyExtractor={(item) => item.id}
+          data={byCategory}
+          keyExtractor={(item) => item.category}
           contentContainerStyle={styles.list}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -114,18 +109,59 @@ export default function PropertyExpensesScreen() {
           ListEmptyComponent={
             <Text style={styles.empty}>Δεν υπάρχουν έξοδα ακόμα.</Text>
           }
-          renderItem={({ item }) => (
-            <View style={styles.card}>
-              <Text style={styles.date}>{formatDisplayDate(item.date)}</Text>
-              {item.category ? (
+          renderItem={({ item }) => {
+            const isCategoryOpen = openCategory === item.category;
+            return (
+              <View style={styles.card}>
                 <Text style={styles.category}>{item.category}</Text>
-              ) : null}
-              <Text style={styles.amount}>
-                {Number(item.amount).toFixed(2)}€
-              </Text>
-              {item.note ? <Text style={styles.note}>{item.note}</Text> : null}
-            </View>
-          )}
+                <Text style={styles.amount}>{item.total.toFixed(2)}€</Text>
+                <Pressable
+                  style={styles.detailBtn}
+                  onPress={() => {
+                    setOpenCategory(isCategoryOpen ? null : item.category);
+                    setOpenExpenseId(null);
+                  }}
+                >
+                  <Text style={styles.detailBtnText}>
+                    {isCategoryOpen ? "Απόκρυψη" : "Αναλυτικά"}
+                  </Text>
+                </Pressable>
+
+                {isCategoryOpen
+                  ? item.items.map((expense) => {
+                      const isExpenseOpen = openExpenseId === expense.id;
+                      return (
+                        <View key={expense.id} style={styles.expenseRow}>
+                          <Text style={styles.date}>
+                            {formatDisplayDate(expense.date)}
+                          </Text>
+                          <Text style={styles.expenseAmount}>
+                            {Number(expense.amount).toFixed(2)}€
+                          </Text>
+                          <Pressable
+                            style={styles.detailBtn}
+                            onPress={() =>
+                              setOpenExpenseId(
+                                isExpenseOpen ? null : expense.id,
+                              )
+                            }
+                          >
+                            <Text style={styles.detailBtnText}>
+                              {isExpenseOpen ? "Απόκρυψη" : "Αναλυτικά"}
+                            </Text>
+                          </Pressable>
+                          {isExpenseOpen ? (
+                            <Text style={styles.note}>
+                              {expense.note?.trim() || "Χωρίς σημείωση"}
+                            </Text>
+                          ) : null}
+                        </View>
+                      );
+                    })
+                  : null}
+              </View>
+            );
+          }}
         />
       )}
     </SafeAreaView>
@@ -163,19 +199,16 @@ function createStyles(scale: number, brand: BrandColors) {
     },
     total: {
       marginTop: 6,
-      fontSize: s(16),
+      fontSize: s(14),
+      fontWeight: "700",
+      color: brand.ink,
+      textAlign: "center",
+    },
+    totalValue: {
+      fontSize: s(22),
       fontWeight: "700",
       color: brand.primary,
-    },
-    categoryTotals: {
-      marginTop: 4,
-      gap: 2,
-      alignItems: "center",
-      marginBottom: 4,
-    },
-    categoryLine: {
-      fontSize: s(12),
-      color: brand.clay,
+      textAlign: "center",
     },
     loader: {
       marginTop: 40,
@@ -206,6 +239,35 @@ function createStyles(scale: number, brand: BrandColors) {
       alignItems: "center",
       gap: 4,
       marginBottom: 10,
+    },
+    detailBtn: {
+      marginTop: 6,
+      borderWidth: 1,
+      borderColor: brand.primary,
+      borderRadius: 8,
+      paddingVertical: 8,
+      paddingHorizontal: 14,
+      alignItems: "center",
+      alignSelf: "stretch",
+    },
+    detailBtnText: {
+      color: brand.primary,
+      fontWeight: "700",
+      fontSize: s(13),
+    },
+    expenseRow: {
+      alignSelf: "stretch",
+      marginTop: 8,
+      paddingTop: 10,
+      borderTopWidth: 1,
+      borderTopColor: brand.sandDeep,
+      alignItems: "center",
+      gap: 4,
+    },
+    expenseAmount: {
+      fontSize: s(15),
+      fontWeight: "700",
+      color: brand.ink,
     },
     date: {
       fontSize: s(12),
