@@ -23,6 +23,9 @@ export type Booking = {
   departure_note?: string | null;
   adults?: number | null;
   children?: number | null;
+  deposit?: number | null;
+  settlement?: number | null;
+  phone?: string | null;
 };
 
 export type BookingsListProps = {
