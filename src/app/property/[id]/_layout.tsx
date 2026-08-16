@@ -14,7 +14,8 @@ export default function PropertyIdLayout() {
       <Stack.Screen
         name="expenses"
         options={{
-          presentation: "modal",
+          // Avoid sheet swipe-dismiss stealing vertical scroll from the list
+          presentation: "card",
           title: "Έξοδα",
           headerShown: true,
         }}

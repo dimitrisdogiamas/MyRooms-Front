@@ -13,9 +13,9 @@ import { Stack, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -85,84 +85,87 @@ export default function PropertyExpensesScreen() {
     <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
       <Stack.Screen options={{ title: "Έξοδα", headerShown: true }} />
 
-      <View style={styles.header}>
-        <Text style={styles.title}>Καταχωρημένα έξοδα</Text>
-        {propertyName ? (
-          <Text style={styles.subtitle}>{propertyName}</Text>
-        ) : null}
-        <Text style={styles.total}>Σύνολο</Text>
-        <Text style={styles.totalValue}>{total.toFixed(2)}€</Text>
-      </View>
-
       {loading ? (
         <ActivityIndicator color={brand.primary} style={styles.loader} />
       ) : error ? (
         <Text style={styles.error}>{error}</Text>
       ) : (
-        <FlatList
-          data={byCategory}
-          keyExtractor={(item) => item.category}
+        <ScrollView
+          style={styles.scroll}
           contentContainerStyle={styles.list}
+          keyboardShouldPersistTaps="handled"
+          nestedScrollEnabled
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
-          ListEmptyComponent={
-            <Text style={styles.empty}>Δεν υπάρχουν έξοδα ακόμα.</Text>
-          }
-          renderItem={({ item }) => {
-            const isCategoryOpen = openCategory === item.category;
-            return (
-              <View style={styles.card}>
-                <Text style={styles.category}>{item.category}</Text>
-                <Text style={styles.amount}>{item.total.toFixed(2)}€</Text>
-                <Pressable
-                  style={styles.detailBtn}
-                  onPress={() => {
-                    setOpenCategory(isCategoryOpen ? null : item.category);
-                    setOpenExpenseId(null);
-                  }}
-                >
-                  <Text style={styles.detailBtnText}>
-                    {isCategoryOpen ? "Απόκρυψη" : "Αναλυτικά"}
-                  </Text>
-                </Pressable>
+        >
+          <View style={styles.header}>
+            <Text style={styles.title}>Καταχωρημένα έξοδα</Text>
+            {propertyName ? (
+              <Text style={styles.subtitle}>{propertyName}</Text>
+            ) : null}
+            <Text style={styles.total}>Σύνολο</Text>
+            <Text style={styles.totalValue}>{total.toFixed(2)}€</Text>
+          </View>
 
-                {isCategoryOpen
-                  ? item.items.map((expense) => {
-                      const isExpenseOpen = openExpenseId === expense.id;
-                      return (
-                        <View key={expense.id} style={styles.expenseRow}>
-                          <Text style={styles.date}>
-                            {formatDisplayDate(expense.date)}
-                          </Text>
-                          <Text style={styles.expenseAmount}>
-                            {Number(expense.amount).toFixed(2)}€
-                          </Text>
-                          <Pressable
-                            style={styles.detailBtn}
-                            onPress={() =>
-                              setOpenExpenseId(
-                                isExpenseOpen ? null : expense.id,
-                              )
-                            }
-                          >
-                            <Text style={styles.detailBtnText}>
-                              {isExpenseOpen ? "Απόκρυψη" : "Αναλυτικά"}
+          {byCategory.length === 0 ? (
+            <Text style={styles.empty}>Δεν υπάρχουν έξοδα ακόμα.</Text>
+          ) : (
+            byCategory.map((item) => {
+              const isCategoryOpen = openCategory === item.category;
+              return (
+                <View key={item.category} style={styles.card}>
+                  <Text style={styles.category}>{item.category}</Text>
+                  <Text style={styles.amount}>{item.total.toFixed(2)}€</Text>
+                  <Pressable
+                    style={styles.detailBtn}
+                    onPress={() => {
+                      setOpenCategory(isCategoryOpen ? null : item.category);
+                      setOpenExpenseId(null);
+                    }}
+                  >
+                    <Text style={styles.detailBtnText}>
+                      {isCategoryOpen ? "Απόκρυψη" : "Αναλυτικά"}
+                    </Text>
+                  </Pressable>
+
+                  {isCategoryOpen
+                    ? item.items.map((expense) => {
+                        const isExpenseOpen = openExpenseId === expense.id;
+                        return (
+                          <View key={expense.id} style={styles.expenseRow}>
+                            <Text style={styles.date}>
+                              {formatDisplayDate(expense.date)}
                             </Text>
-                          </Pressable>
-                          {isExpenseOpen ? (
-                            <Text style={styles.note}>
-                              {expense.note?.trim() || "Χωρίς σημείωση"}
+                            <Text style={styles.expenseAmount}>
+                              {Number(expense.amount).toFixed(2)}€
                             </Text>
-                          ) : null}
-                        </View>
-                      );
-                    })
-                  : null}
-              </View>
-            );
-          }}
-        />
+                            <Pressable
+                              style={styles.detailBtn}
+                              onPress={() =>
+                                setOpenExpenseId(
+                                  isExpenseOpen ? null : expense.id,
+                                )
+                              }
+                            >
+                              <Text style={styles.detailBtnText}>
+                                {isExpenseOpen ? "Απόκρυψη" : "Αναλυτικά"}
+                              </Text>
+                            </Pressable>
+                            {isExpenseOpen ? (
+                              <Text style={styles.note}>
+                                {expense.note?.trim() || "Χωρίς σημείωση"}
+                              </Text>
+                            ) : null}
+                          </View>
+                        );
+                      })
+                    : null}
+                </View>
+              );
+            })
+          )}
+        </ScrollView>
       )}
     </SafeAreaView>
   );
@@ -175,6 +178,9 @@ function createStyles(scale: number, brand: BrandColors) {
       flex: 1,
       backgroundColor: brand.sand,
     },
+    scroll: {
+      flex: 1,
+    },
     header: {
       paddingHorizontal: 18,
       paddingTop: 12,
@@ -184,6 +190,8 @@ function createStyles(scale: number, brand: BrandColors) {
       borderBottomWidth: 1,
       borderBottomColor: brand.sandDeep,
       backgroundColor: brand.white,
+      borderRadius: 12,
+      marginBottom: 6,
     },
     title: {
       fontSize: s(22),
@@ -229,6 +237,7 @@ function createStyles(scale: number, brand: BrandColors) {
       padding: 16,
       gap: 10,
       paddingBottom: 40,
+      flexGrow: 1,
     },
     card: {
       backgroundColor: brand.white,
@@ -238,7 +247,6 @@ function createStyles(scale: number, brand: BrandColors) {
       padding: 14,
       alignItems: "center",
       gap: 4,
-      marginBottom: 10,
     },
     detailBtn: {
       marginTop: 6,

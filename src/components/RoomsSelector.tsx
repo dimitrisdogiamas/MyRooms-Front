@@ -79,11 +79,11 @@ const RoomsSelector = ({
         >
           {compact ? (
             <Text style={styles.addButtonTextCompact}>
-              + Προσθήκη δωματίου
+            Προσθήκη δωματίου
             </Text>
           ) : (
             <ThemedText style={styles.addButtonText}>
-              + Προσθήκη δωματίου
+              Προσθήκη δωματίου
             </ThemedText>
           )}
         </Pressable>
@@ -146,13 +146,13 @@ function createStyles(scale: number, brand: BrandColors) {
 
     },
     addButtonText: {
-      color: brand.white,
+      color: brand.onAccent,
       fontSize: s(15),
       fontWeight: "700",
     },
     addButtonTextCompact: {
       color: "#F1EFE6",
-      fontSize: 11.5,
+      fontSize: 13,
       lineHeight: 14,
       fontWeight: "600",
     },
@@ -169,8 +169,8 @@ function createStyles(scale: number, brand: BrandColors) {
       borderRadius: 8,
       paddingHorizontal: 10,
       paddingVertical: 8,
-      backgroundColor: "#ffffff",
-      color: brand.sandDeep,
+      backgroundColor: brand.white,
+      color: brand.ink,
     },
     confirmButton: {
       backgroundColor: brand.primary,
@@ -179,7 +179,7 @@ function createStyles(scale: number, brand: BrandColors) {
       borderRadius: 8,
     },
     confirmText: {
-      color: "#ffffff",
+      color: brand.onAccent,
       fontWeight: "600",
     },
     cancelText: {

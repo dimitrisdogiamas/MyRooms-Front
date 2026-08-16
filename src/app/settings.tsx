@@ -337,7 +337,7 @@ function createStyles(scale: number, brand: BrandColors, compactMode: boolean) {
       alignItems: "center",
     },
     saveButtonText: {
-      color: "#ffffff",
+      color: brand.onAccent,
       fontWeight: "700",
       fontSize: s(16),
     },
@@ -348,7 +348,7 @@ function createStyles(scale: number, brand: BrandColors, compactMode: boolean) {
       textAlign: "center",
     },
     optionButtonTextActive: {
-      color: "#ffffff",
+      color: brand.onAccent,
     },
     optionButtonActive: {
       backgroundColor: brand.primary,
@@ -363,7 +363,7 @@ function createStyles(scale: number, brand: BrandColors, compactMode: boolean) {
       alignItems: "center",
     },
     logoutButtonText: {
-      color: brand.white,
+      color: brand.onAccent,
       fontWeight: "700",
       fontSize: s(16),
     },

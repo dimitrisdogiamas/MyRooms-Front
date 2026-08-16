@@ -1,5 +1,5 @@
-import { DismissKeyboard } from "@/components/DismissKeyboard";
 import { Fonts, type BrandColors } from "@/constants/theme";
+import { ScrollFriendlyTextInput } from "@/components/ScrollFriendlyTextInput";
 import { useSettings } from "@/context/SettingsProvider";
 import { useBrand } from "@/hooks/use-brand";
 import {
@@ -15,6 +15,7 @@ import { router } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -22,7 +23,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { Calendar } from "react-native-calendars";
@@ -165,11 +165,12 @@ export function ExpensesProp({
             ref={scrollRef}
             style={styles.bodyScroll}
             contentContainerStyle={styles.bodyContent}
-            keyboardShouldPersistTaps="handled"
+            keyboardShouldPersistTaps="always"
             keyboardDismissMode="on-drag"
+            onScrollBeginDrag={Keyboard.dismiss}
             showsVerticalScrollIndicator={false}
           >
-            <DismissKeyboard style={styles.stack}>
+            <View style={styles.stack}>
               <View style={styles.totalsCard}>
                 <Text style={styles.totalsTitle}>Σύνολο</Text>
                 <Text style={styles.totalsValue}>{total.toFixed(2)}€</Text>
@@ -244,7 +245,7 @@ export function ExpensesProp({
                       noteOffsetInForm.current = e.nativeEvent.layout.y;
                     }}
                   >
-                    <TextInput
+                    <ScrollFriendlyTextInput
                       style={styles.input}
                       value={note}
                       onChangeText={setNote}
@@ -260,7 +261,7 @@ export function ExpensesProp({
                       amountOffsetInForm.current = e.nativeEvent.layout.y;
                     }}
                   >
-                    <TextInput
+                    <ScrollFriendlyTextInput
                       style={[styles.input, styles.inputCentered]}
                       value={amount}
                       onChangeText={setAmount}
@@ -306,7 +307,7 @@ export function ExpensesProp({
                   </Text>
                 </Pressable>
               )}
-            </DismissKeyboard>
+            </View>
           </ScrollView>
 
           <Pressable style={styles.closeBtn} onPress={onClose}>
@@ -443,7 +444,7 @@ function createStyles(scale: number, brand: BrandColors) {
       alignItems: "center",
     },
     addBtnText: {
-      color: "#ffffff",
+      color: brand.onAccent,
       fontWeight: "700",
       fontSize: s(14),
     },
@@ -488,7 +489,7 @@ function createStyles(scale: number, brand: BrandColors) {
       textAlign: "center",
     },
     categoryChipTextActive: {
-      color: "#ffffff",
+      color: brand.onAccent,
     },
     dateRow: {
       flexDirection: "row",
@@ -580,7 +581,7 @@ function createStyles(scale: number, brand: BrandColors) {
       alignItems: "center",
     },
     primaryBtnText: {
-      color: "#ffffff",
+      color: brand.onAccent,
       fontWeight: "700",
       fontSize: s(14),
     },

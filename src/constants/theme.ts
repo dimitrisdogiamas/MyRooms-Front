@@ -17,6 +17,8 @@ const brandLight = {
   ink: '#1f2a28',
   danger: '#c0392b',
   white: '#ffffff',
+  /** Text/icons on primary, danger, and other solid accents — always light */
+  onAccent: '#ffffff',
   /** Main teal accent — title, CTAs, calendar stay */
   primary: '#2f6f6a',
   calendarBlue: '#2f6f6a',
@@ -34,6 +36,8 @@ const brandDark = {
   ink: '#f2ebe3',
   danger: '#e74c3c',
   white: '#1c2624',
+  /** Text/icons on primary, danger, and other solid accents — always light */
+  onAccent: '#ffffff',
   primary: '#4a9e97',
   calendarBlue: '#4a9e97',
   calendarTurnover: '#e08a3a',

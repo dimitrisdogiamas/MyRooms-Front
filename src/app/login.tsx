@@ -171,7 +171,7 @@ function createStyles(scale: number, brand: BrandColors) {
       opacity: 0.7,
     },
     buttonText: {
-      color: "#ffffff",
+      color: brand.onAccent,
       fontWeight: "700",
       fontSize: s(16),
     },
