@@ -742,7 +742,7 @@ function createStyles(scale: number, brand: BrandColors) {
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(44, 36, 28, 0.55)",
+    backgroundColor: brand.overlay,
     justifyContent: "center",
     padding: 20,
   },

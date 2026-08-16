@@ -93,7 +93,7 @@ export default function Login() {
               onPress={() => void onSubmit()}
             >
               {busy ? (
-                <ActivityIndicator color="#ffffff" />
+                <ActivityIndicator color={brand.onAccent} />
               ) : (
                 <Text style={styles.buttonText}>Είσοδος</Text>
               )}

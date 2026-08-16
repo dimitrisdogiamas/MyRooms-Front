@@ -134,9 +134,9 @@ function createStyles(scale: number, brand: BrandColors) {
       alignItems: "center",
     },
     addButtonCompact: {
-      backgroundColor: "rgba(255, 255, 255, 0.12)",
+      backgroundColor: brand.onAccentSoft,
       borderWidth: 1,
-      borderColor: "rgba(255, 255, 255, 0.28)",
+      borderColor: brand.onAccentBorder,
       borderRadius: 7,
       paddingVertical: 4,
       paddingHorizontal: 8,
@@ -151,7 +151,7 @@ function createStyles(scale: number, brand: BrandColors) {
       fontWeight: "700",
     },
     addButtonTextCompact: {
-      color: "#F1EFE6",
+      color: brand.onAccent,
       fontSize: 13,
       lineHeight: 14,
       fontWeight: "600",
@@ -183,7 +183,7 @@ function createStyles(scale: number, brand: BrandColors) {
       fontWeight: "600",
     },
     cancelText: {
-      color: "#9aa9a8",
+      color: brand.claySoft,
       fontSize: s(28),
       lineHeight: s(30),
       fontWeight: "400",

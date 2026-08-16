@@ -108,7 +108,7 @@ function buildAvailabilityFromBookings(
       const isEnd = current === booking.end_date;
       result[booking.room_id][current] = {
         color: isEnd ? brand.calendarTurnover : brand.calendarBlue,
-        textColor: brand.white,
+        textColor: brand.onAccent,
         startingDay: isStart,
         endingDay: isEnd,
         kind: isEnd ? "departure" : isStart ? "arrival" : "stay",
@@ -126,7 +126,7 @@ function buildAvailabilityFromBookings(
       if (!ends.has(date)) continue;
       result[roomId][date] = {
         color: brand.calendarBlue,
-        textColor: brand.white,
+        textColor: brand.onAccent,
         startingDay: true,
         endingDay: true,
         kind: "split",
@@ -1056,7 +1056,7 @@ export default function PropertyScreen() {
                         const onStay = Boolean(bg);
                         const textColor =
                           isSplit || onStay
-                            ? brand.white
+                            ? brand.onAccent
                             : isArrival
                               ? brand.ink
                               : state === "today"
@@ -1108,7 +1108,9 @@ export default function PropertyScreen() {
                                 styles.dayPrice,
                                 {
                                   color:
-                                    isSplit || onStay ? brand.white : brand.ink,
+                                    isSplit || onStay
+                                      ? brand.onAccent
+                                      : brand.ink,
                                 },
                               ]}
                             >
@@ -1734,13 +1736,13 @@ function createStyles(scale: number, brand: BrandColors) {
     },
     dim: {
       ...StyleSheet.absoluteFill,
-      backgroundColor: "rgba(44, 36, 28, 0.45)",
+      backgroundColor: brand.overlay,
     },
     safe: {
       flex: 1,
     },
     propertyHeader: {
-      backgroundColor: "#16323A",
+      backgroundColor: brand.primary,
       paddingVertical: 6,
       paddingHorizontal: 18,
       zIndex: 20,
@@ -1758,7 +1760,7 @@ function createStyles(scale: number, brand: BrandColors) {
     },
     headerPill: {
       borderWidth: 1,
-      borderColor: "rgba(255,255,255,0.35)",
+      borderColor: brand.onAccentBorder,
       borderRadius: 10,
       paddingHorizontal: 10,
       paddingVertical: 8,
@@ -1772,7 +1774,7 @@ function createStyles(scale: number, brand: BrandColors) {
       width: 102,
     },
     headerPillText: {
-      color: "#f2ebe3",
+      color: brand.onAccent,
       fontWeight: "700",
       fontSize: s(13),
       textAlign: "center",
@@ -1802,9 +1804,9 @@ function createStyles(scale: number, brand: BrandColors) {
     expensesBtn: {
       flex: 1,
       minWidth: 0,
-      backgroundColor: "rgba(217, 138, 61, 0.22)",
+      backgroundColor: brand.warningSoft,
       borderWidth: 1,
-      borderColor: "rgba(217, 138, 61, 0.5)",
+      borderColor: brand.warningBorder,
       borderRadius: 7,
       paddingVertical: 4,
       paddingHorizontal: 2,
@@ -1814,7 +1816,7 @@ function createStyles(scale: number, brand: BrandColors) {
     expensesBtnText: {
       fontSize: 12,
       lineHeight: 14,
-      color: "#F1EFE6",
+      color: brand.onAccent,
       fontWeight: "600",
     },
     content: {
@@ -1967,7 +1969,7 @@ function createStyles(scale: number, brand: BrandColors) {
     // modal styles
     modalOverlay: {
       flex: 1,
-      backgroundColor: "rgba(44, 36, 28, 0.55)",
+      backgroundColor: brand.overlay,
       justifyContent: "center",
       padding: 20,
     },
@@ -2239,11 +2241,11 @@ function createStyles(scale: number, brand: BrandColors) {
       alignItems: "center",
     },
     guestStepperLabel: {
-      color: "#2563eb",
+      color: brand.primary,
       textAlign: "center",
     },
     guestStepperLabelChildren: {
-      color: "#dc2626",
+      color: brand.danger,
       textAlign: "center",
     },
     bookingPriceBox: {
@@ -2296,14 +2298,14 @@ function createStyles(scale: number, brand: BrandColors) {
       lineHeight: s(20),
     },
     stepperValue: {
-      color: "#2563eb",
+      color: brand.primary,
       minWidth: 24,
       textAlign: "center",
       fontSize: s(16),
       fontWeight: "700",
     },
     stepperValueChildren: {
-      color: "#dc2626",
+      color: brand.danger,
       fontSize: s(16),
       fontWeight: "700",
       textAlign: "center",

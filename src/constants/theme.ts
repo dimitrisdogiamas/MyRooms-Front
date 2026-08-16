@@ -8,39 +8,48 @@ import '@/global.css';
 import { Platform } from 'react-native';
 
 const brandLight = {
-  sand: '#f7f1ea',
-  sandDeep: '#efe4d6',
-  clay: '#5f6f6c',
-  claySoft: '#7d8a87',
-  gold: '#c9a876',
-  goldDark: '#b8945f',
-  ink: '#1f2a28',
-  danger: '#c0392b',
-  white: '#ffffff',
-  /** Text/icons on primary, danger, and other solid accents — always light */
-  onAccent: '#ffffff',
-  /** Main teal accent — title, CTAs, calendar stay */
-  primary: '#2f6f6a',
-  calendarBlue: '#2f6f6a',
-  calendarTurnover: '#e08a3a',
+  sand: '#EAF1F3',
+  sandDeep: '#CEDDE1',
+  clay: '#455A64',
+  claySoft: '#687C85',
+  gold: '#E0A24C',
+  goldDark: '#B96F1E',
+  ink: '#10232B',
+  danger: '#C84040',
+  white: '#FFFFFF',
+  onAccent: '#FFFFFF',
+  primary: '#176B77',
+  primaryStrong: '#0E4F59',
+  calendarBlue: '#267E8B',
+  calendarTurnover: '#E07B32',
+  link: '#1769AA',
+  overlay: 'rgba(7, 12, 16, 0.56)',
+  onAccentSoft: 'rgba(255, 255, 255, 0.12)',
+  onAccentBorder: 'rgba(255, 255, 255, 0.28)',
+  warningSoft: 'rgba(212, 154, 69, 0.18)',
+  warningBorder: 'rgba(212, 154, 69, 0.48)',
 } as const;
-
-/** Dark surfaces keep the resort teal mood, not pure black */
 const brandDark = {
-  sand: '#141c1b',
-  sandDeep: '#1e2a28',
-  clay: '#a8b5b2',
-  claySoft: '#8f9e9b',
-  gold: '#d4b896',
-  goldDark: '#c9a876',
-  ink: '#f2ebe3',
-  danger: '#e74c3c',
-  white: '#1c2624',
-  /** Text/icons on primary, danger, and other solid accents — always light */
-  onAccent: '#ffffff',
-  primary: '#4a9e97',
-  calendarBlue: '#4a9e97',
-  calendarTurnover: '#e08a3a',
+  sand: '#0F151B',
+  sandDeep: '#182129',
+  clay: '#B8C2CA',
+  claySoft: '#8F9BA5',
+  gold: '#E0AD5C',
+  goldDark: '#C88B35',
+  ink: '#F1F4F6',
+  danger: '#F06464',
+  white: '#202B34',
+  onAccent: '#FFFFFF',
+  primary: '#4CA6B2',
+  primaryStrong: '#183C45',
+  calendarBlue: '#59B3BE',
+  calendarTurnover: '#E99B4E',
+  link: '#7EA8FF',
+  overlay: 'rgba(3, 7, 10, 0.72)',
+  onAccentSoft: 'rgba(255, 255, 255, 0.10)',
+  onAccentBorder: 'rgba(255, 255, 255, 0.24)',
+  warningSoft: 'rgba(224, 173, 92, 0.18)',
+  warningBorder: 'rgba(224, 173, 92, 0.48)',
 } as const;
 
 export const BrandPalettes = {
@@ -60,6 +69,7 @@ export const Colors = {
     backgroundElement: brandLight.sandDeep,
     backgroundSelected: brandLight.primary,
     textSecondary: brandLight.claySoft,
+    link: brandLight.link,
   },
   dark: {
     text: brandDark.ink,
@@ -67,6 +77,7 @@ export const Colors = {
     backgroundElement: brandDark.sandDeep,
     backgroundSelected: brandDark.primary,
     textSecondary: brandDark.claySoft,
+    link: brandDark.link,
   },
 } as const;
 

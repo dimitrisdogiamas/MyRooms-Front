@@ -222,7 +222,7 @@ function createStyles(scale: number, brand: BrandColors) {
   return StyleSheet.create({
     overlay: {
       flex: 1,
-      backgroundColor: "rgba(0,0,0,0.45)",
+      backgroundColor: brand.overlay,
       justifyContent: "center",
       padding: 16,
     },
@@ -340,7 +340,7 @@ function createStyles(scale: number, brand: BrandColors) {
       textAlign: "center",
     },
     adultsCount: {
-      color: "#2563eb",
+      color: brand.primary,
       fontWeight: "700",
     },
     childrenCount: {
