@@ -96,7 +96,7 @@ function createStyles(scale: number, brand: BrandColors) {
     fontSize: s(13),
   },
   labelActive: {
-    color: brand.white,
+    color: brand.onAccent,
   },
 });
 }

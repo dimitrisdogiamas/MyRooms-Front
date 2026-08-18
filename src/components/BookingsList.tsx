@@ -192,7 +192,7 @@ function createStyles(scale: number, brand: BrandColors) {
       marginTop: 4,
     },
     cancelText: {
-      color: brand.white,
+      color: brand.onAccent,
       fontSize: s(13),
       fontWeight: "600",
     },

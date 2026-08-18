@@ -4,6 +4,7 @@ import { DismissKeyboard } from "@/components/DismissKeyboard";
 import { ExpensesProp } from "@/components/ExpensesProp";
 import { PropertyOverviewModal } from "@/components/PropertyOverviewModal";
 import RoomsSelector, { Room } from "@/components/RoomsSelector";
+import { ScrollFriendlyTextInput } from "@/components/ScrollFriendlyTextInput";
 import { YearOverviewModal } from "@/components/YearOverviewModal";
 import { Fonts, type BrandColors } from "@/constants/theme";
 import { useSettings } from "@/context/SettingsProvider";
@@ -30,6 +31,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Dimensions,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -37,7 +39,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   useWindowDimensions,
   View,
@@ -107,7 +108,7 @@ function buildAvailabilityFromBookings(
       const isEnd = current === booking.end_date;
       result[booking.room_id][current] = {
         color: isEnd ? brand.calendarTurnover : brand.calendarBlue,
-        textColor: brand.white,
+        textColor: brand.onAccent,
         startingDay: isStart,
         endingDay: isEnd,
         kind: isEnd ? "departure" : isStart ? "arrival" : "stay",
@@ -125,7 +126,7 @@ function buildAvailabilityFromBookings(
       if (!ends.has(date)) continue;
       result[roomId][date] = {
         color: brand.calendarBlue,
-        textColor: brand.white,
+        textColor: brand.onAccent,
         startingDay: true,
         endingDay: true,
         kind: "split",
@@ -851,15 +852,17 @@ export default function PropertyScreen() {
     textMonthFontWeight: "700" as const,
     "stylesheet.calendar.main": {
       container: {
-        paddingLeft: 0,
-        paddingRight: 0,
+        paddingLeft: CALENDAR_WEEK_GAP,
+        paddingRight: CALENDAR_WEEK_GAP,
+        paddingTop: CALENDAR_WEEK_GAP,
+        paddingBottom: CALENDAR_WEEK_GAP,
         backgroundColor: brand.white,
       },
       week: {
         flexDirection: "row" as const,
-        gap: 3,
+        gap: CALENDAR_WEEK_GAP,
         marginTop: 0,
-        marginBottom: 3,
+        marginBottom: CALENDAR_WEEK_GAP,
       },
       dayContainer: {
         flex: 1,
@@ -869,7 +872,7 @@ export default function PropertyScreen() {
     "stylesheet.calendar.header": {
       week: {
         flexDirection: "row" as const,
-        gap: 3,
+        gap: CALENDAR_WEEK_GAP,
         marginTop: 0,
         marginBottom: 6,
       },
@@ -908,7 +911,7 @@ export default function PropertyScreen() {
               style={[styles.headerPill, styles.headerSide]}
               onPress={() => router.back()}
             >
-              <Text style={styles.headerPillText}>{"<"} Σπίτια</Text>
+              <Text style={styles.headerPillText}>Κατ/ματα</Text>
             </Pressable>
 
             <View style={styles.yearMenu}>
@@ -1017,7 +1020,7 @@ export default function PropertyScreen() {
                     <Text style={styles.hint}>
                       {start
                         ? `Έναρξη: ${start} — πάτα ημερομηνία λήξης (min 5 μέρες)`
-                        : "Πάτα ημερομηνία έναρξης, μετά ημερομηνία λήξης"}
+                        : "Επέλεξε ημερομηνία άφιξης, μετά ημερομηνία αναχώρησης"}
                     </Text>
 
                     <Calendar
@@ -1053,7 +1056,7 @@ export default function PropertyScreen() {
                         const onStay = Boolean(bg);
                         const textColor =
                           isSplit || onStay
-                            ? brand.white
+                            ? brand.onAccent
                             : isArrival
                               ? brand.ink
                               : state === "today"
@@ -1105,7 +1108,9 @@ export default function PropertyScreen() {
                                 styles.dayPrice,
                                 {
                                   color:
-                                    isSplit || onStay ? brand.white : brand.ink,
+                                    isSplit || onStay
+                                      ? brand.onAccent
+                                      : brand.ink,
                                 },
                               ]}
                             >
@@ -1155,7 +1160,7 @@ export default function PropertyScreen() {
                     </Text>
 
                     <Text style={styles.incomeText}>
-                      Σύνολο εσόδων δωματίου:
+                       Εσόδα δωματίου: {` `}
                       {`${getRoomIncome(bookings, roomPrices, room.id).toFixed(2)}€`}
                     </Text>
 
@@ -1299,7 +1304,7 @@ export default function PropertyScreen() {
           style={styles.modalOverlay}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          <DismissKeyboard
+          <View
             style={[
               styles.bookingModalPanel,
               {
@@ -1316,6 +1321,7 @@ export default function PropertyScreen() {
                 contentContainerStyle={styles.bookingModalScrollContent}
                 keyboardShouldPersistTaps="always"
                 keyboardDismissMode="on-drag"
+                onScrollBeginDrag={Keyboard.dismiss}
                 showsVerticalScrollIndicator={false}
               >
                 <Text style={styles.bookingModalDates}>
@@ -1327,44 +1333,28 @@ export default function PropertyScreen() {
                   διανυκτ.
                 </Text>
 
-                <View style={styles.bookingGuestInputWrap}>
-                  {!guestName && !guestInputFocused ? (
-                    <Text
-                      pointerEvents="none"
-                      style={styles.bookingGuestPlaceholder}
-                    >
-                      Όνομα πελάτη
-                    </Text>
-                  ) : null}
-                  <TextInput
-                    style={styles.bookingGuestInput}
-                    value={guestName}
-                    onChangeText={setGuestName}
-                    onFocus={() => setGuestInputFocused(true)}
-                    onBlur={() => setGuestInputFocused(false)}
-                    textAlign={guestInputFocused ? "left" : "center"}
-                  />
-                </View>
+                <ScrollFriendlyTextInput
+                  style={styles.bookingGuestInput}
+                  value={guestName}
+                  onChangeText={setGuestName}
+                  onFocus={() => setGuestInputFocused(true)}
+                  onBlur={() => setGuestInputFocused(false)}
+                  placeholder="Όνομα πελάτη"
+                  placeholderTextColor={brand.claySoft}
+                  textAlign={guestInputFocused ? "left" : "center"}
+                />
 
-                <View style={styles.bookingGuestInputWrap}>
-                  {!phone && !phoneInputFocused ? (
-                    <Text
-                      pointerEvents="none"
-                      style={styles.bookingGuestPlaceholder}
-                    >
-                      Τηλέφωνο
-                    </Text>
-                  ) : null}
-                  <TextInput
-                    style={styles.bookingGuestInput}
-                    value={phone}
-                    onChangeText={setPhone}
-                    onFocus={() => setPhoneInputFocused(true)}
-                    onBlur={() => setPhoneInputFocused(false)}
-                    keyboardType="phone-pad"
-                    textAlign={phoneInputFocused ? "left" : "center"}
-                  />
-                </View>
+                <ScrollFriendlyTextInput
+                  style={styles.bookingGuestInput}
+                  value={phone}
+                  onChangeText={setPhone}
+                  onFocus={() => setPhoneInputFocused(true)}
+                  onBlur={() => setPhoneInputFocused(false)}
+                  keyboardType="phone-pad"
+                  placeholder="Τηλέφωνο"
+                  placeholderTextColor={brand.claySoft}
+                  textAlign={phoneInputFocused ? "left" : "center"}
+                />
 
                 <View style={[styles.guestsBox, styles.guestsRow]}>
                   <View style={styles.guestStepper}>
@@ -1430,7 +1420,7 @@ export default function PropertyScreen() {
                       <Text style={styles.bookingPaymentLabel}>
                         Κόστος διαν/σης (€)
                       </Text>
-                      <TextInput
+                      <ScrollFriendlyTextInput
                         style={styles.bookingPaymentInput}
                         value={bookingPrice}
                         onChangeText={setBookingPrice}
@@ -1470,7 +1460,7 @@ export default function PropertyScreen() {
                       <Text style={styles.bookingPaymentLabel}>
                         Προκαταβολή
                       </Text>
-                      <TextInput
+                      <ScrollFriendlyTextInput
                         style={styles.bookingPaymentInput}
                         value={deposit}
                         onChangeText={setDeposit}
@@ -1549,7 +1539,7 @@ export default function PropertyScreen() {
                 </View>
               </ScrollView>
             ) : null}
-          </DismissKeyboard>
+          </View>
         </KeyboardAvoidingView>
       </Modal>
 
@@ -1570,6 +1560,7 @@ export default function PropertyScreen() {
               contentContainerStyle={styles.pricingModalScrollContent}
               keyboardShouldPersistTaps="always"
               keyboardDismissMode="on-drag"
+              onScrollBeginDrag={Keyboard.dismiss}
               showsVerticalScrollIndicator
             >
               <Text style={styles.modalDate}>Τιμές — {pricingRoom?.name}</Text>
@@ -1613,7 +1604,7 @@ export default function PropertyScreen() {
 
               <View style={styles.priceDateRow}>
                 <View style={styles.priceDateField}>
-                  <TextInput
+                  <ScrollFriendlyTextInput
                     style={styles.priceInput}
                     placeholder="dd/mm/yyyy"
                     placeholderTextColor={brand.claySoft}
@@ -1630,7 +1621,7 @@ export default function PropertyScreen() {
                   </Pressable>
                 </View>
                 <View style={styles.priceDateField}>
-                  <TextInput
+                  <ScrollFriendlyTextInput
                     style={styles.priceInput}
                     placeholder="dd/mm/yyyy"
                     placeholderTextColor={brand.claySoft}
@@ -1648,7 +1639,7 @@ export default function PropertyScreen() {
                 </View>
               </View>
 
-              <TextInput
+              <ScrollFriendlyTextInput
                 style={styles.priceInput}
                 placeholder="€ / διανυκτέρευση"
                 placeholderTextColor={brand.claySoft}
@@ -1721,14 +1712,19 @@ export default function PropertyScreen() {
   );
 }
 
+const CALENDAR_WEEK_GAP = 3;
+
 function createStyles(scale: number, brand: BrandColors) {
   const s = (n: number) => fs(n, scale);
-  const weekGap = 3;
-  const calendarWidthRatio = 0.96;
+  const weekGap = CALENDAR_WEEK_GAP;
+  const calendarWidthRatio = 0.92;
   const contentPad = 32;
+  const calendarPad = weekGap;
   const calendarWidth =
     (Dimensions.get("window").width - contentPad) * calendarWidthRatio;
-  const daySize = Math.floor((calendarWidth - weekGap * 6) / 7);
+  const daySize = Math.floor(
+    (calendarWidth - calendarPad * 2 - weekGap * 6) / 7,
+  );
 
   return StyleSheet.create({
     root: {
@@ -1740,13 +1736,13 @@ function createStyles(scale: number, brand: BrandColors) {
     },
     dim: {
       ...StyleSheet.absoluteFill,
-      backgroundColor: "rgba(44, 36, 28, 0.45)",
+      backgroundColor: brand.overlay,
     },
     safe: {
       flex: 1,
     },
     propertyHeader: {
-      backgroundColor: "#16323A",
+      backgroundColor: brand.primary,
       paddingVertical: 6,
       paddingHorizontal: 18,
       zIndex: 20,
@@ -1764,18 +1760,24 @@ function createStyles(scale: number, brand: BrandColors) {
     },
     headerPill: {
       borderWidth: 1,
-      borderColor: "rgba(255,255,255,0.35)",
+      borderColor: brand.onAccentBorder,
       borderRadius: 10,
       paddingHorizontal: 10,
       paddingVertical: 8,
+      width: "100%",
+      minHeight: 36,
+      alignItems: "center",
+      justifyContent: "center",
     },
     headerSide: {
       zIndex: 1,
+      width: 102,
     },
     headerPillText: {
-      color: "#f2ebe3",
+      color: brand.onAccent,
       fontWeight: "700",
       fontSize: s(13),
+      textAlign: "center",
     },
     headerTitleBtn: {
       position: "absolute",
@@ -1789,7 +1791,7 @@ function createStyles(scale: number, brand: BrandColors) {
       zIndex: 0,
     },
     headerTitleText: {
-      color: "#ffffff",
+      color: brand.onAccent,
       fontWeight: "700",
       fontSize: s(17),
       textAlign: "center",
@@ -1802,9 +1804,9 @@ function createStyles(scale: number, brand: BrandColors) {
     expensesBtn: {
       flex: 1,
       minWidth: 0,
-      backgroundColor: "rgba(217, 138, 61, 0.22)",
+      backgroundColor: brand.warningSoft,
       borderWidth: 1,
-      borderColor: "rgba(217, 138, 61, 0.5)",
+      borderColor: brand.warningBorder,
       borderRadius: 7,
       paddingVertical: 4,
       paddingHorizontal: 2,
@@ -1812,10 +1814,10 @@ function createStyles(scale: number, brand: BrandColors) {
       justifyContent: "center",
     },
     expensesBtnText: {
-      color: "#F1EFE6",
-      fontWeight: "600",
-      fontSize: 11.5,
+      fontSize: 12,
       lineHeight: 14,
+      color: brand.onAccent,
+      fontWeight: "600",
     },
     content: {
       padding: 16,
@@ -1846,35 +1848,32 @@ function createStyles(scale: number, brand: BrandColors) {
       flex: 1,
       flexShrink: 1,
       textAlign: "center",
-      color: "#ffffff",
+      color: brand.onAccent,
       fontSize: s(16),
       fontWeight: "700",
     },
     pricesButton: {
-      backgroundColor: brand.primary,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
+      paddingHorizontal: 8,
+      paddingVertical: 6,
       borderRadius: 10,
-      borderWidth: 1,
-      borderColor: "#ffffff",
     },
     pricesButtonText: {
-      color: "#ffffff",
+      color: brand.onAccent,
       fontWeight: "700",
       fontSize: s(13),
     },
     deleteRoomButton: {
-      backgroundColor: brand.danger,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
+      paddingHorizontal: 8,
+      paddingVertical: 6,
       borderRadius: 10,
     },
     deleteRoomButtonText: {
-      color: "#ffffff",
+      color: brand.onAccent,
       fontWeight: "700",
       fontSize: s(13),
     },
     incomeText: {
+      textAlign: "center",
       marginTop: 12,
       fontSize: s(14),
       fontWeight: "600",
@@ -1888,28 +1887,30 @@ function createStyles(scale: number, brand: BrandColors) {
       marginBottom: 8,
     },
     hint: {
-      fontSize: s(12),
+      textAlign: "center",
+      fontSize: 10,
       color: brand.claySoft,
       marginBottom: 8,
       marginTop: 4,
-      lineHeight: s(16),
+      lineHeight:16,
     },
     legend: {
       flexDirection: "row",
-      flexWrap: "nowrap",
-      justifyContent: "space-between",
+      flexWrap: "wrap",
+      justifyContent: "center",
       alignItems: "center",
-      gap: 4,
+      columnGap: 10,
+      rowGap: 6,
       marginTop: 6,
       marginBottom: 2,
-      width: daySize * 7 + weekGap * 6,
+      width: daySize * 7 + weekGap * 6 + calendarPad * 2,
       alignSelf: "center",
     },
     legendItem: {
       flexDirection: "row",
       alignItems: "center",
       gap: 4,
-      flexShrink: 1,
+      flexShrink: 0,
     },
     dot: {
       width: 10,
@@ -1955,13 +1956,12 @@ function createStyles(scale: number, brand: BrandColors) {
       borderLeftColor: "transparent",
     },
     legendText: {
-      fontSize: s(10),
+      fontSize: 10,
       color: brand.claySoft,
-      flexShrink: 1,
     },
     calendar: {
       alignSelf: "center",
-      width: daySize * 7 + weekGap * 6,
+      width: daySize * 7 + weekGap * 6 + calendarPad * 2,
       borderRadius: 14,
       overflow: "hidden",
     },
@@ -1969,7 +1969,7 @@ function createStyles(scale: number, brand: BrandColors) {
     // modal styles
     modalOverlay: {
       flex: 1,
-      backgroundColor: "rgba(44, 36, 28, 0.55)",
+      backgroundColor: brand.overlay,
       justifyContent: "center",
       padding: 20,
     },
@@ -1998,11 +1998,13 @@ function createStyles(scale: number, brand: BrandColors) {
       paddingBottom: 120,
     },
     modalDate: {
+      textAlign: "center",
       fontSize: s(28),
       fontWeight: "700",
       color: brand.ink,
     },
     modalSubtitle: {
+      textAlign: "center",
       fontSize: s(15),
       color: brand.claySoft,
       marginBottom: 4,
@@ -2039,7 +2041,7 @@ function createStyles(scale: number, brand: BrandColors) {
       alignItems: "center",
     },
     modalConfirmText: {
-      color: brand.white,
+      color: brand.onAccent,
       fontWeight: "700",
       fontSize: s(16),
     },
@@ -2089,6 +2091,7 @@ function createStyles(scale: number, brand: BrandColors) {
     },
     priceSectionTitle: {
       marginTop: 4,
+      textAlign: "center",
       fontSize: s(15),
       fontWeight: "700",
       color: brand.ink,
@@ -2238,11 +2241,11 @@ function createStyles(scale: number, brand: BrandColors) {
       alignItems: "center",
     },
     guestStepperLabel: {
-      color: "#2563eb",
+      color: brand.primary,
       textAlign: "center",
     },
     guestStepperLabelChildren: {
-      color: "#dc2626",
+      color: brand.danger,
       textAlign: "center",
     },
     bookingPriceBox: {
@@ -2295,14 +2298,14 @@ function createStyles(scale: number, brand: BrandColors) {
       lineHeight: s(20),
     },
     stepperValue: {
-      color: "#2563eb",
+      color: brand.primary,
       minWidth: 24,
       textAlign: "center",
       fontSize: s(16),
       fontWeight: "700",
     },
     stepperValueChildren: {
-      color: "#dc2626",
+      color: brand.danger,
       fontSize: s(16),
       fontWeight: "700",
       textAlign: "center",
@@ -2329,10 +2332,19 @@ function createStyles(scale: number, brand: BrandColors) {
       zIndex: 1,
     },
     bookingGuestInput: {
+      borderWidth: 1.5,
+      borderColor: brand.primary,
+      borderRadius: 10,
+      backgroundColor: brand.white,
       paddingHorizontal: 12,
       paddingVertical: 10,
       fontSize: s(15),
       color: brand.ink,
+      shadowColor: brand.primary,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.22,
+      shadowRadius: 5,
+      elevation: 4,
     },
     checkboxRow: {
       flexDirection: "row",
@@ -2355,7 +2367,7 @@ function createStyles(scale: number, brand: BrandColors) {
       borderColor: brand.calendarBlue,
     },
     checkboxTick: {
-      color: brand.white,
+      color: brand.onAccent,
       fontSize: s(14),
       fontWeight: "700",
     },
@@ -2398,7 +2410,7 @@ function createStyles(scale: number, brand: BrandColors) {
     },
 
     bookingSaveText: {
-      color: brand.white,
+      color: brand.onAccent,
       fontWeight: "700",
     },
     bookingsList: {
@@ -2414,32 +2426,37 @@ function createStyles(scale: number, brand: BrandColors) {
     yearMenu: {
       position: "relative",
       zIndex: 30,
+      width: 102,
     },
     yearDropdown: {
       position: "absolute",
       top: "100%",
+      left: 0,
       right: 0,
       marginTop: 4,
       backgroundColor: brand.white,
-      borderRadius: 8,
+      borderRadius: 10,
       borderWidth: 1,
       borderColor: brand.ink,
       zIndex: 40,
       elevation: 8,
-      minWidth: 96,
       overflow: "hidden",
     },
     yearDropdownItem: {
-      paddingVertical: 10,
-      paddingHorizontal: 14,
+      minHeight: 36,
+      paddingVertical: 8,
+      paddingHorizontal: 10,
       alignItems: "center",
+      justifyContent: "center",
     },
     yearDropdownItemActive: {
       backgroundColor: brand.sand,
     },
     yearDropdownItemText: {
       color: brand.ink,
-      fontWeight: "600",
+      fontWeight: "700",
+      fontSize: s(13),
+      textAlign: "center",
     },
     yearDropdownItemTextActive: {
       color: brand.primary,

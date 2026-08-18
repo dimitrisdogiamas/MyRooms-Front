@@ -153,7 +153,7 @@ const PropertiesList = () => {
             ? ["Δεν υπάρχουν αλλαγές."]
             : result.map(
                 (t) =>
-                  `${t.roomName}: ${t.date}${t.note ? ` — ${t.note}` : ""}`,
+                  `${t.roomName}: ${formatDisplayDate(t.date)}${t.note ? ` — ${t.note}` : ""}`,
               ),
       });
       return;
@@ -166,7 +166,9 @@ const PropertiesList = () => {
         lines:
           result.length === 0
             ? ["Δεν υπάρχουν ημερομηνίες για σεντόνια."]
-            : result.map((s) => `${s.roomName}: ${s.date}`),
+            : result.map(
+                (s) => `${s.roomName}: ${formatDisplayDate(s.date)}`,
+              ),
       });
       return;
     }
@@ -178,7 +180,8 @@ const PropertiesList = () => {
         result.length === 0
           ? ["Δεν υπάρχουν κενά."]
           : result.map(
-              (g) => `${g.roomName}: ${g.from} – ${g.to} (${g.nights} βράδια)`,
+              (g) =>
+                `${g.roomName}: ${formatDisplayDate(g.from)} – ${formatDisplayDate(g.to)} (${g.nights} βράδια)`,
             ),
     });
   }
@@ -340,7 +343,7 @@ const PropertiesList = () => {
       <View style={styles.addRow}>
         <TextInput
           style={[styles.input, styles.addInput]}
-          placeholder="Όνομα σπιτιού / καταλύματος"
+          placeholder="Όνομα καταλύματος"
           placeholderTextColor={brand.claySoft}
           value={newName}
           onChangeText={setNewName}
@@ -652,7 +655,7 @@ function createStyles(scale: number, brand: BrandColors) {
     opacity: 0.6,
   },
   confirmText: {
-    color: brand.white,
+    color: brand.onAccent,
     fontWeight: "700",
     fontSize: s(14),
   },
@@ -715,7 +718,7 @@ function createStyles(scale: number, brand: BrandColors) {
     alignItems: "center",
   },
   deleteButtonText: {
-    color: brand.white,
+    color: brand.onAccent,
     fontWeight: "700",
     fontSize: s(12),
   },
@@ -739,7 +742,7 @@ function createStyles(scale: number, brand: BrandColors) {
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(44, 36, 28, 0.55)",
+    backgroundColor: brand.overlay,
     justifyContent: "center",
     padding: 20,
   },
@@ -817,7 +820,7 @@ function createStyles(scale: number, brand: BrandColors) {
     alignItems: "center",
   },
   searchButtonText: {
-    color: brand.white,
+    color: brand.onAccent,
     fontWeight: "700",
     fontSize: s(14),
   },
@@ -829,7 +832,7 @@ function createStyles(scale: number, brand: BrandColors) {
   },
     alertText: {
     textAlign: "center",
-    color: brand.white,
+    color: brand.onAccent,
     fontSize: s(14),
   },
 });

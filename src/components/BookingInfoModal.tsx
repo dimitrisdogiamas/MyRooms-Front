@@ -219,7 +219,7 @@ function createStyles(scale: number, brand: BrandColors) {
   return StyleSheet.create({
     overlay: {
       flex: 1,
-      backgroundColor: "rgba(0,0,0,0.45)",
+      backgroundColor: brand.overlay,
       justifyContent: "center",
       padding: 16,
     },
@@ -325,7 +325,7 @@ function createStyles(scale: number, brand: BrandColors) {
       marginTop: 4,
     },
     saveGuestsText: {
-      color: brand.white,
+      color: brand.onAccent,
       fontWeight: "700",
       fontSize: s(14),
     },

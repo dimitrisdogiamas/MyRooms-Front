@@ -93,7 +93,7 @@ export default function Login() {
               onPress={() => void onSubmit()}
             >
               {busy ? (
-                <ActivityIndicator color="#ffffff" />
+                <ActivityIndicator color={brand.onAccent} />
               ) : (
                 <Text style={styles.buttonText}>Είσοδος</Text>
               )}
@@ -171,7 +171,7 @@ function createStyles(scale: number, brand: BrandColors) {
       opacity: 0.7,
     },
     buttonText: {
-      color: "#ffffff",
+      color: brand.onAccent,
       fontWeight: "700",
       fontSize: s(16),
     },

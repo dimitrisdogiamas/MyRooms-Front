@@ -62,7 +62,7 @@ export function ThemedText({
         type === "linkPrimary" && {
           lineHeight: s(30),
           fontSize: s(14),
-          color: "#3c87f7",
+          color: theme.link,
         },
         type === "code" && {
           fontFamily: Fonts.mono,

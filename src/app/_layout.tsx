@@ -20,16 +20,14 @@ import {
 SplashScreen.preventAutoHideAsync();
 
 function LockScreen({
-  brandBg,
   onUnlock,
 }: {
-  brandBg: string;
   onUnlock: () => void;
 }) {
   const brand = useBrand();
 
   return (
-    <View style={[styles.lockRoot, { backgroundColor: brandBg }]}>
+    <View style={[styles.lockRoot, { backgroundColor: brand.sand }]}>
       <Text style={[styles.lockTitle, { color: brand.ink }]}>my-rooms</Text>
       <Text style={[styles.lockSubtitle, { color: brand.claySoft }]}>
         Ξεκλείδωσε με βιομετρικά για να συνεχίσεις
@@ -38,7 +36,9 @@ function LockScreen({
         style={[styles.lockButton, { backgroundColor: brand.primary }]}
         onPress={onUnlock}
       >
-        <Text style={styles.lockButtonText}>Ξεκλείδωμα</Text>
+        <Text style={[styles.lockButtonText, { color: brand.onAccent }]}>
+          Ξεκλείδωμα
+        </Text>
       </Pressable>
     </View>
   );
@@ -47,7 +47,20 @@ function LockScreen({
 function RootLayoutNav() {
   const scheme = useResolvedScheme();
   const { session, loading, unlocked, unlock } = useAuth();
-  const brandBg = scheme === "dark" ? "#141c1b" : "#f7f1ea";
+  const brand = useBrand();
+  const baseTheme = scheme === "dark" ? DarkTheme : DefaultTheme;
+  const navigationTheme = {
+    ...baseTheme,
+    colors: {
+      ...baseTheme.colors,
+      primary: brand.primary,
+      background: brand.sand,
+      card: brand.white,
+      text: brand.ink,
+      border: brand.sandDeep,
+      notification: brand.danger,
+    },
+  };
 
   useEffect(() => {
     if (session && !unlocked && !loading) {
@@ -62,25 +75,25 @@ function RootLayoutNav() {
           flex: 1,
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: brandBg,
+          backgroundColor: brand.sand,
         }}
       >
-        <ActivityIndicator />
+        <ActivityIndicator color={brand.primary} />
       </View>
     );
   }
 
   if (session && !unlocked) {
     return (
-      <ThemeProvider value={scheme === "dark" ? DarkTheme : DefaultTheme}>
+      <ThemeProvider value={navigationTheme}>
         <StatusBar style={scheme === "dark" ? "light" : "dark"} />
-        <LockScreen brandBg={brandBg} onUnlock={() => void unlock()} />
+        <LockScreen onUnlock={() => void unlock()} />
       </ThemeProvider>
     );
   }
 
   return (
-    <ThemeProvider value={scheme === "dark" ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={navigationTheme}>
       <StatusBar style={scheme === "dark" ? "light" : "dark"} />
       <AnimatedSplashOverlay />
       <Stack>
@@ -149,7 +162,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   lockButtonText: {
-    color: "#ffffff",
     fontWeight: "700",
     fontSize: 16,
   },
