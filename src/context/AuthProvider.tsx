@@ -12,6 +12,7 @@ type AuthContextType = {
   unlocked: boolean;
   unlock: () => Promise<void>;
   lock: () => void;
+  register: (email: string, password: string) => Promise<boolean>;
 }
 
 
@@ -92,6 +93,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (error) throw error;
   }, []);
 
+  const register = useCallback(async (email: string, password: string) => {
+    const { data,error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+    if (error) throw error;
+    return !data.session;
+  }, []);
+
   const unlock = useCallback(async () => {
     const hasHardware = await LocalAuthentication.hasHardwareAsync();
     const enrolled = await LocalAuthentication.isEnrolledAsync();
@@ -113,6 +123,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setUnlocked(false);
   }, []);
 
+
   return (
     <AuthContext.Provider
       value={{
@@ -123,6 +134,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         unlocked,
         unlock,
         lock,
+        register,
       }}
     >
       {children}

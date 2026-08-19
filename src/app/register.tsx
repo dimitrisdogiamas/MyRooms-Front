@@ -1,50 +1,70 @@
-import { type BrandColors } from "@/constants/theme";
+import { useState, useMemo } from "react";
+import { router } from "expo-router";
 import { useAuth } from "@/context/AuthProvider";
 import { useSettings } from "@/context/SettingsProvider";
 import { useBrand } from "@/hooks/use-brand";
-import { DismissKeyboard } from "@/components/DismissKeyboard";
 import { fs } from "@/lib/typography";
-import { router } from "expo-router";
-import { useMemo, useState } from "react";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { DismissKeyboard } from "@/components/DismissKeyboard";
 import {
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
-  StyleSheet,
   Text,
   TextInput,
   View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+  StyleSheet,
+  Pressable,
 
-export default function Login() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
-  const { signIn } = useAuth();
+} from "react-native";
+import { type BrandColors } from "@/constants/theme";
+
+
+
+export default function Register() {
   const { settings } = useSettings();
+  const { register } = useAuth();
   const brand = useBrand();
   const styles = useMemo(
     () => createStyles(settings.fontScale, brand),
     [settings.fontScale, brand],
   );
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
 
   async function onSubmit() {
-    const trimmedEmail = email.trim();
+
+    const trimmedEmail = email.trim().toLowerCase();
+
     if (!trimmedEmail || !password) {
-      Alert.alert("Σφάλμα", "Συμπλήρωσε email και κωδικό.");
+      Alert.alert("Σφάλμα", "Παρακαλώ συμπληρώστε όλα τα πεδία.");
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert("Σφάλμα", "Ο κωδικός πρέπει να έχει τουλάχιστον 6 χαρακτήρες.");
       return;
     }
 
     try {
       setBusy(true);
-      await signIn(trimmedEmail, password);
+      const needConfirmation = await register(trimmedEmail, password);
+      if (needConfirmation) {
+        Alert.alert(
+          "Έλεγξε το email σου",
+          "Στείλαμε μήνυμα επιβεβαίωσης στη διεύθυνσή σου.",
+          [
+            {
+              text: "OK",
+              onPress: () => router.replace("/login"),
+            },
+          ],
+        );
+      }
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Αποτυχία εισόδου.";
-      Alert.alert("Σφάλμα εισόδου", message);
+      const message = error instanceof Error ? error.message : "Αποτυχία εγγραφής.";
+      Alert.alert("Σφάλμα εγγραφής", message);
     } finally {
       setBusy(false);
     }
@@ -57,14 +77,13 @@ export default function Login() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <DismissKeyboard style={styles.container}>
-          <Text style={styles.title}>my-accomondations</Text>
-          <Text style={styles.subtitle}>Σύνδεση στον λογαριασμό σου</Text>
+          <Text style={styles.title}>Register to my-accomondations</Text>
 
           <View style={styles.card}>
-            <Text style={styles.label}>Email</Text>
+            <Text style={styles.subtitle}>Εγγραφή στον λογαριασμό σου</Text>
             <TextInput
               style={styles.input}
-              placeholder="email@example.com"
+              placeholder="Email"
               placeholderTextColor={brand.claySoft}
               value={email}
               onChangeText={setEmail}
@@ -74,37 +93,25 @@ export default function Login() {
               textContentType="emailAddress"
               editable={!busy}
             />
-
-            <Text style={styles.label}>Κωδικός</Text>
             <TextInput
               style={styles.input}
-              placeholder="••••••••"
+              placeholder="Password"
               placeholderTextColor={brand.claySoft}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
-              textContentType="password"
+              textContentType="newPassword"
               editable={!busy}
-              onSubmitEditing={() => void onSubmit()}
-            />
 
+            />
             <Pressable
-              style={[styles.button, busy && styles.buttonDisabled]}
+              style={styles.button}
               disabled={busy}
-              onPress={() => void onSubmit()}
+              onPress={onSubmit}
             >
-              {busy ? (
-                <ActivityIndicator color={brand.onAccent} />
-              ) : (
-                <Text style={styles.buttonText}>Είσοδος</Text>
-              )}
-            </Pressable>
-            <Pressable
-              style={[styles.button, busy && styles.buttonDisabled]}
-              disabled={busy}
-              onPress={() => router.push("/register")}
-            >
-              <Text style={styles.buttonText}>Εγγραφή</Text>
+              <Text style={styles.buttonText}>
+                {busy ? "Περιμένετε..." : "Εγγραφή"}
+              </Text>
             </Pressable>
           </View>
         </DismissKeyboard>
