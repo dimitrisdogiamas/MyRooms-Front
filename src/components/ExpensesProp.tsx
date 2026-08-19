@@ -83,20 +83,10 @@ export function ExpensesProp({
   const scrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isDragging = useRef(false);
 
-  function scrollToField(offsetInForm: number) {
-    logExpenseScroll("H4", "ExpensesProp.tsx:83", "Auto-scroll requested for focused field", {
-      formY: formY.current,
-      fieldOffset: offsetInForm,
-    });
-    if (scrollTimer.current) clearTimeout(scrollTimer.current);
-    scrollTimer.current = setTimeout(() => {
-      scrollTimer.current = null;
-      if (isDragging.current) return;
-      scrollRef.current?.scrollTo({
-        y: Math.max(0, formY.current + offsetInForm - 24),
-        animated: true,
-      });
-    }, 120);
+  function scrollToField(_offsetInForm: number) {
+    // No-op: let the system handle scroll-into-view for focused inputs.
+    // Manual scrollTo was pushing the viewport so low that no empty
+    // area remained for the user to drag-scroll.
   }
 
   async function loadExpenses() {
@@ -181,7 +171,7 @@ export function ExpensesProp({
     >
       <KeyboardAvoidingView
         style={styles.overlay}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <View style={styles.panel}>
           <Text style={styles.title}>Έξοδα</Text>
