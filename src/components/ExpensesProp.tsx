@@ -41,6 +41,18 @@ function formatDisplayDate(iso: string): string {
   return `${d}/${m}/${y}`;
 }
 
+function logExpenseScroll(
+  hypothesisId: string,
+  location: string,
+  message: string,
+  data: Record<string, unknown>,
+) {
+  // #region agent log
+  console.log("[expense-scroll-debug]", { hypothesisId, location, message, data });
+  fetch("http://127.0.0.1:7309/ingest/28dbb2f3-4f54-40b9-be09-c96975b72407",{method:"POST",headers:{"Content-Type":"application/json","X-Debug-Session-Id":"e41cc8"},body:JSON.stringify({sessionId:"e41cc8",runId:"initial",hypothesisId,location,message,data,timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
+}
+
 export function ExpensesProp({
   visible,
   onClose,
@@ -68,9 +80,18 @@ export function ExpensesProp({
   const formY = useRef(0);
   const noteOffsetInForm = useRef(0);
   const amountOffsetInForm = useRef(0);
+  const scrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isDragging = useRef(false);
 
   function scrollToField(offsetInForm: number) {
-    setTimeout(() => {
+    logExpenseScroll("H4", "ExpensesProp.tsx:83", "Auto-scroll requested for focused field", {
+      formY: formY.current,
+      fieldOffset: offsetInForm,
+    });
+    if (scrollTimer.current) clearTimeout(scrollTimer.current);
+    scrollTimer.current = setTimeout(() => {
+      scrollTimer.current = null;
+      if (isDragging.current) return;
       scrollRef.current?.scrollTo({
         y: Math.max(0, formY.current + offsetInForm - 24),
         animated: true,
@@ -102,6 +123,13 @@ export function ExpensesProp({
     setNote("");
     setDatePickerOpen(false);
   }, [visible, propertyId]);
+
+  useEffect(() => {
+    if (!visible || !adding) return;
+    logExpenseScroll("H3", "ExpensesProp.tsx:115", "Expense form opened", {
+      hasKeyboardAvoidingView: true,
+    });
+  }, [adding, visible]);
 
   const total = getExpensesTotal(expenses);
 
@@ -167,7 +195,24 @@ export function ExpensesProp({
             contentContainerStyle={styles.bodyContent}
             keyboardShouldPersistTaps="always"
             keyboardDismissMode="on-drag"
-            onScrollBeginDrag={Keyboard.dismiss}
+            onLayout={(event) =>
+              logExpenseScroll("H2", "ExpensesProp.tsx:183", "Scroll viewport measured", {
+                height: event.nativeEvent.layout.height,
+              })
+            }
+            onContentSizeChange={(_, height) =>
+              logExpenseScroll("H2", "ExpensesProp.tsx:188", "Scroll content measured", {
+                height,
+              })
+            }
+            onScrollBeginDrag={(event) => {
+              isDragging.current = true;
+              if (scrollTimer.current) { clearTimeout(scrollTimer.current); scrollTimer.current = null; }
+              logExpenseScroll("H1", "ExpensesProp.tsx:193", "Parent ScrollView received drag", {
+                offsetY: event.nativeEvent.contentOffset.y,
+              });
+            }}
+            onScrollEndDrag={() => { isDragging.current = false; }}
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.stack}>
@@ -246,12 +291,16 @@ export function ExpensesProp({
                     }}
                   >
                     <ScrollFriendlyTextInput
+                      debugId="expenses-note"
                       style={styles.input}
                       value={note}
                       onChangeText={setNote}
                       placeholder="π.χ. λογαριασμός ΔΕΗ"
                       placeholderTextColor={brand.claySoft}
-                      onFocus={() => scrollToField(noteOffsetInForm.current)}
+                      onFocus={() => {
+                        logExpenseScroll("H1", "ExpensesProp.tsx:285", "Note input focused", {});
+                        scrollToField(noteOffsetInForm.current);
+                      }}
                     />
                   </View>
 
@@ -262,13 +311,17 @@ export function ExpensesProp({
                     }}
                   >
                     <ScrollFriendlyTextInput
+                      debugId="expenses-amount"
                       style={[styles.input, styles.inputCentered]}
                       value={amount}
                       onChangeText={setAmount}
                       placeholder="0.00"
                       placeholderTextColor={brand.claySoft}
                       keyboardType="decimal-pad"
-                      onFocus={() => scrollToField(amountOffsetInForm.current)}
+                      onFocus={() => {
+                        logExpenseScroll("H1", "ExpensesProp.tsx:305", "Amount input focused", {});
+                        scrollToField(amountOffsetInForm.current);
+                      }}
                     />
                   </View>
 
