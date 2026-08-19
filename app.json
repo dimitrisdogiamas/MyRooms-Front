@@ -32,6 +32,7 @@
         }
       ],
       "expo-router",
+      "expo-web-browser",
       "expo-dev-client",
       "expo-notifications",
       [

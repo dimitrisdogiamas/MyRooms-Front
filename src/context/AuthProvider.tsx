@@ -1,8 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { Session } from "@supabase/supabase-js";
+import * as QueryParams from "expo-auth-session/build/QueryParams";
+import * as Linking from "expo-linking";
 import * as LocalAuthentication from "expo-local-authentication";
+import * as WebBrowser from "expo-web-browser";
 import { supabase } from "@/lib/supabase";
 import { useSettings } from "./SettingsProvider";
+
+WebBrowser.maybeCompleteAuthSession();
 
 type AuthContextType = {
   session: Session | null;
@@ -12,6 +17,8 @@ type AuthContextType = {
   unlocked: boolean;
   unlock: () => Promise<void>;
   lock: () => void;
+  register: (email: string, password: string) => Promise<boolean>;
+  signInWithGoogle: () => Promise<void>;
 }
 
 
@@ -92,6 +99,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (error) throw error;
   }, []);
 
+  const register = useCallback(async (email: string, password: string) => {
+    const { data, error } = await supabase.auth.signUp({
+      options: {
+        emailRedirectTo: "myrooms://login",
+      },
+      email,
+      password,
+    });
+    if (error) throw error;
+    return !data.session;
+  }, []);
+
   const unlock = useCallback(async () => {
     const hasHardware = await LocalAuthentication.hasHardwareAsync();
     const enrolled = await LocalAuthentication.isEnrolledAsync();
@@ -113,6 +132,39 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setUnlocked(false);
   }, []);
 
+  const signInWithGoogle = useCallback(async () => {
+    const redirectTo = Linking.createURL("callback");
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        skipBrowserRedirect: true,
+        redirectTo,
+      },
+    });
+    if (error) throw error;
+    if (!data.url) throw new Error("Δεν ήταν δυνατή η δημιουργία σύνδεσης με Google.");
+
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+    if (result.type !== "success") return;
+
+    const { params, errorCode } = QueryParams.getQueryParams(result.url);
+    if (errorCode) {
+      throw new Error(errorCode);
+    }
+
+    const accessToken = params.access_token;
+    const refreshToken = params.refresh_token;
+    if (!accessToken || !refreshToken) {
+      throw new Error("Δεν ελήφθη session από το Google.");
+    }
+
+    const { error: sessionError } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+    if (sessionError) throw sessionError;
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -123,6 +175,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         unlocked,
         unlock,
         lock,
+        register,
+        signInWithGoogle,
       }}
     >
       {children}
