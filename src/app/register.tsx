@@ -18,6 +18,7 @@ import {
 
 } from "react-native";
 import { type BrandColors } from "@/constants/theme";
+import { supabase } from "@/lib/supabase";
 
 
 

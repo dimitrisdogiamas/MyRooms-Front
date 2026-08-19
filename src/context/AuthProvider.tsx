@@ -1,8 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { Session } from "@supabase/supabase-js";
+import * as Linking from "expo-linking";
 import * as LocalAuthentication from "expo-local-authentication";
+import * as WebBrowser from "expo-web-browser";
 import { supabase } from "@/lib/supabase";
 import { useSettings } from "./SettingsProvider";
+
+WebBrowser.maybeCompleteAuthSession();
 
 type AuthContextType = {
   session: Session | null;
@@ -13,6 +17,7 @@ type AuthContextType = {
   unlock: () => Promise<void>;
   lock: () => void;
   register: (email: string, password: string) => Promise<boolean>;
+  signInWithGoogle: () => Promise<void>;
 }
 
 
@@ -94,7 +99,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const register = useCallback(async (email: string, password: string) => {
-    const { data,error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
+      options: {
+        emailRedirectTo: "myrooms://login",
+      },
       email,
       password,
     });
@@ -123,6 +131,32 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setUnlocked(false);
   }, []);
 
+  const signInWithGoogle = useCallback(async () => {
+    const redirectTo = Linking.createURL("auth/callback");
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        skipBrowserRedirect: true,
+        redirectTo,
+      },
+    });
+    console.log("Google OAuth URL:", {data, error, redirectTo});
+    if (error) throw error;
+    if (!data.url) throw new Error("Δεν ήταν δυνατή η δημιουργία σύνδεσης με Google.");
+
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+    if (result.type !== "success") return;
+
+    const { queryParams } = Linking.parse(result.url);
+    const code = queryParams?.code;
+    if (typeof code !== "string") {
+      throw new Error("Δεν ελήφθη κωδικός σύνδεσης από το Google.");
+    }
+
+    const { error: exchangeError } =
+      await supabase.auth.exchangeCodeForSession(code);
+    if (exchangeError) throw exchangeError;
+  }, []);
 
   return (
     <AuthContext.Provider
@@ -135,6 +169,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         unlock,
         lock,
         register,
+        signInWithGoogle,
       }}
     >
       {children}

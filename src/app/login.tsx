@@ -18,12 +18,11 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const { signIn } = useAuth();
+  const { signIn, signInWithGoogle } = useAuth();
   const { settings } = useSettings();
   const brand = useBrand();
   const styles = useMemo(
@@ -45,6 +44,21 @@ export default function Login() {
       const message =
         error instanceof Error ? error.message : "Αποτυχία εισόδου.";
       Alert.alert("Σφάλμα εισόδου", message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onGoogleSignIn() {
+    try {
+      setBusy(true);
+      await signInWithGoogle();
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Αποτυχία σύνδεσης με Google.";
+      Alert.alert("Σφάλμα σύνδεσης", message);
     } finally {
       setBusy(false);
     }
@@ -106,17 +120,23 @@ export default function Login() {
             >
               <Text style={styles.buttonText}>Εγγραφή</Text>
             </Pressable>
+            <Pressable
+              style={[styles.button, busy && styles.buttonDisabled]}
+              disabled={busy}
+              onPress={() => void onGoogleSignIn()}
+            >
+              <Text style={styles.buttonText}>Σύνδεση με Google</Text>
+            </Pressable>
           </View>
         </DismissKeyboard>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
+  function createStyles(scale: number, brand: BrandColors) {
+    const s = (n: number) => fs(n, scale);
 
-function createStyles(scale: number, brand: BrandColors) {
-  const s = (n: number) => fs(n, scale);
-
-  return StyleSheet.create({
+    return StyleSheet.create({
     flex: {
       flex: 1,
     },
@@ -184,4 +204,5 @@ function createStyles(scale: number, brand: BrandColors) {
       fontSize: s(16),
     },
   });
+
 }

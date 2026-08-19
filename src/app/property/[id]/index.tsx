@@ -1,10 +1,9 @@
-import { BookingInfoModal } from "@/components/BookingInfoModal";
 import { Booking, BookingsList } from "@/components/BookingsList";
+import { BookingInfoModal } from "@/components/BookingInfoModal";
 import { DismissKeyboard } from "@/components/DismissKeyboard";
 import { ExpensesProp } from "@/components/ExpensesProp";
 import { PropertyOverviewModal } from "@/components/PropertyOverviewModal";
 import RoomsSelector, { Room } from "@/components/RoomsSelector";
-import { ScrollFriendlyTextInput } from "@/components/ScrollFriendlyTextInput";
 import { YearOverviewModal } from "@/components/YearOverviewModal";
 import { Fonts, type BrandColors } from "@/constants/theme";
 import { useSettings } from "@/context/SettingsProvider";
@@ -18,7 +17,6 @@ import {
   getBookingIncome,
   getPriceForNight,
   getRoomIncome,
-  isBookingCoveredPrice,
   upsertRoomPriceForStay,
   type RoomPricing,
 } from "@/lib/roomPricing";
@@ -26,22 +24,19 @@ import { supabase } from "@/lib/supabase";
 import { fs } from "@/lib/typography";
 import type { YearOverview } from "@/lib/yearOverview";
 import { getYearOverview } from "@/lib/yearOverview";
-import { router, Stack, useLocalSearchParams } from "expo-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Stack, useLocalSearchParams, router } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
-  Dimensions,
-  Keyboard,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
-  useWindowDimensions,
+  TextInput,
   View,
+  Dimensions,
 } from "react-native";
 import { Calendar } from "react-native-calendars";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -108,7 +103,7 @@ function buildAvailabilityFromBookings(
       const isEnd = current === booking.end_date;
       result[booking.room_id][current] = {
         color: isEnd ? brand.calendarTurnover : brand.calendarBlue,
-        textColor: brand.onAccent,
+        textColor: brand.white,
         startingDay: isStart,
         endingDay: isEnd,
         kind: isEnd ? "departure" : isStart ? "arrival" : "stay",
@@ -126,7 +121,7 @@ function buildAvailabilityFromBookings(
       if (!ends.has(date)) continue;
       result[roomId][date] = {
         color: brand.calendarBlue,
-        textColor: brand.onAccent,
+        textColor: brand.white,
         startingDay: true,
         endingDay: true,
         kind: "split",
@@ -136,9 +131,6 @@ function buildAvailabilityFromBookings(
 
   return result;
 }
-
-const windowWidth = Dimensions.get("window").width;
-const windowHeight = Dimensions.get("window").height;
 
 export default function PropertyScreen() {
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
@@ -172,9 +164,6 @@ export default function PropertyScreen() {
   const [adults, setAdults] = useState(2);
   const [children, setChildren] = useState(2);
   const [bookingPrice, setBookingPrice] = useState("");
-  const [guestInputFocused, setGuestInputFocused] = useState(false);
-  const [priceInputFocused, setPriceInputFocused] = useState(false);
-  const [phoneInputFocused, setPhoneInputFocused] = useState(false);
   const [notifyArrival, setNotifyArrival] = useState(true);
   const [notifyDeparture, setNotifyDeparture] = useState(true);
   const [savingBooking, setSavingBooking] = useState(false);
@@ -189,37 +178,14 @@ export default function PropertyScreen() {
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [yearMenuOpen, setYearMenuOpen] = useState(false);
-  const [deposit, setDeposit] = useState("");
-  const [settlement, setSettlement] = useState("");
-  const [phone, setPhone] = useState("");
-
-  const pricingScrollRef = useRef<ScrollView>(null);
-  const bookingScrollRef = useRef<ScrollView>(null);
-  const bookingCostPanelY = useRef(0);
-
-  function scrollPricingToAmount() {
-    setTimeout(() => {
-      pricingScrollRef.current?.scrollToEnd({ animated: true });
-    }, 120);
-  }
-
-  function scrollBookingToCostPanel() {
-    setTimeout(() => {
-      bookingScrollRef.current?.scrollTo({
-        y: Math.max(0, bookingCostPanelY.current - 24),
-        animated: true,
-      });
-    }, 120);
-  }
 
   const { settings } = useSettings();
   const brand = useBrand();
-  const { width: winWidth, height: winHeight } = useWindowDimensions();
-  const isCompact = winWidth < 380;
   const styles = useMemo(
     () => createStyles(settings.fontScale, brand),
     [settings.fontScale, brand],
   );
+
 
   const yearOptions = useMemo(() => {
     const years = new Set<number>();
@@ -244,45 +210,6 @@ export default function PropertyScreen() {
 
     return [...years].sort((a, b) => b - a);
   }, [bookings, roomPrices, currentYear]);
-
-  const draftTotalCost = useMemo(() => {
-    if (!bookingDraft) return 0;
-    const nights = countNights(
-      bookingDraft.startDate,
-      bookingDraft.endDate,
-    );
-    const parsed = Number.parseFloat(bookingPrice.replace(",", "."));
-    if (Number.isFinite(parsed) && parsed > 0) {
-      return parsed * nights;
-    }
-    return getBookingIncome(
-      {
-        id: "draft",
-        room_id: bookingDraft.room.id,
-        start_date: bookingDraft.startDate,
-        end_date: bookingDraft.endDate,
-      },
-      roomPrices,
-    );
-  }, [bookingDraft, bookingPrice, roomPrices]);
-
-  const draftDeposit = Number.parseFloat(deposit.replace(",", ".")) || 0;
-  const draftRemaining = Math.max(0, draftTotalCost - draftDeposit);
-
-  const draftHasMissingPrice = useMemo(() => {
-    if (!bookingDraft) return false;
-    const parsed = Number.parseFloat(bookingPrice.replace(",", "."));
-    if (Number.isFinite(parsed) && parsed > 0) return false;
-    return bookingHasMissingPrices(
-      {
-        id: "draft",
-        room_id: bookingDraft.room.id,
-        start_date: bookingDraft.startDate,
-        end_date: bookingDraft.endDate,
-      },
-      roomPrices,
-    );
-  }, [bookingDraft, bookingPrice, roomPrices]);
 
   const fetchPropertyData = useCallback(async () => {
     setLoading(true);
@@ -332,7 +259,7 @@ export default function PropertyScreen() {
       supabase
         .from("bookings")
         .select(
-          "id, room_id, start_date, end_date, departure_note, guest_name, adults, children, deposit, settlement, phone",
+          "id, room_id, start_date, end_date, departure_note, guest_name, adults, children",
         )
         .in("room_id", roomIds)
         .order("start_date", { ascending: true }),
@@ -344,20 +271,8 @@ export default function PropertyScreen() {
       getPropertyExpenses(propertyId).catch(() => [] as Expense[]),
     ]);
 
-    let bookingsData: Booking[] | null =
-      (bookingsRes.data as Booking[] | null) ?? null;
+    let bookingsData: Booking[] | null = (bookingsRes.data as Booking[] | null) ?? null;
     let bookingsError = bookingsRes.error;
-    if (bookingsError) {
-      const fallbackBookings = await supabase
-        .from("bookings")
-        .select(
-          "id, room_id, start_date, end_date, departure_note, guest_name, adults, children",
-        )
-        .in("room_id", roomIds)
-        .order("start_date", { ascending: true });
-      bookingsData = (fallbackBookings.data as Booking[] | null) ?? null;
-      bookingsError = fallbackBookings.error;
-    }
     if (bookingsError) {
       const fallbackBookings = await supabase
         .from("bookings")
@@ -373,18 +288,7 @@ export default function PropertyScreen() {
       setBookings([]);
       setRoomAvailability({});
     } else {
-      const nextBookings = (bookingsData ?? []).map((row) => ({
-        ...row,
-        deposit:
-          row.deposit == null || row.deposit === undefined
-            ? null
-            : Number(row.deposit),
-        settlement:
-          row.settlement == null || row.settlement === undefined
-            ? null
-            : Number(row.settlement),
-        phone: row.phone ?? null,
-      }));
+      const nextBookings = bookingsData ?? [];
       setBookings(nextBookings);
       setRoomAvailability(buildAvailabilityFromBookings(nextBookings, brand));
     }
@@ -563,9 +467,13 @@ export default function PropertyScreen() {
 
     setSavingPrice(true);
     try {
-      await applyRoomPriceRange(pricingRoom.id, start, end, amount, {
-        protectBookingNights: true,
-      });
+      await applyRoomPriceRange(
+        pricingRoom.id,
+        start,
+        end,
+        amount,
+        { protectBookingNights: true },
+      );
     } catch (err) {
       setSavingPrice(false);
       console.error(err);
@@ -592,8 +500,6 @@ export default function PropertyScreen() {
   async function deleteRoomPrice(priceId: string) {
     try {
       await deleteRoomPriceProtectingBookings(priceId);
-      setRoomPrices((prev) => prev.filter((p) => p.id !== priceId));
-      await fetchPropertyData();
     } catch (err) {
       console.error(err);
       const message =
@@ -606,6 +512,8 @@ export default function PropertyScreen() {
       Alert.alert("Σφάλμα", message);
       return;
     }
+
+    await fetchPropertyData();
   }
 
   async function handleDayPress(room: Room, dateString: string) {
@@ -662,12 +570,6 @@ export default function PropertyScreen() {
     setAdults(2);
     setChildren(2);
     setBookingPrice("");
-    setDeposit("");
-    setSettlement("");
-    setPhone("");
-    setGuestInputFocused(false);
-    setPriceInputFocused(false);
-    setPhoneInputFocused(false);
     setNotifyArrival(true);
     setNotifyDeparture(true);
     setBookingDraft({
@@ -688,13 +590,6 @@ export default function PropertyScreen() {
     };
     const parsedPrice = Number.parseFloat(bookingPrice.replace(",", "."));
     const hasUserPrice = Number.isFinite(parsedPrice) && parsedPrice > 0;
-    const depositValue = Number.parseFloat(deposit.replace(",", ".")) || 0;
-    const settlementParsed = Number.parseFloat(settlement.replace(",", "."));
-    const settlementValue =
-      Number.isFinite(settlementParsed) && settlementParsed >= 0
-        ? settlementParsed
-        : 0;
-    const phoneValue = phone.trim() || null;
 
     if (bookingHasMissingPrices(draftBooking, roomPrices) && !hasUserPrice) {
       Alert.alert(
@@ -705,16 +600,10 @@ export default function PropertyScreen() {
     }
 
     setSavingBooking(true);
-    const paymentFields = {
-      deposit: depositValue,
-      settlement: settlementValue,
-      phone: phoneValue,
-    };
     const base = {
       room_id: bookingDraft.room.id,
       start_date: bookingDraft.startDate,
       end_date: bookingDraft.endDate,
-      ...paymentFields,
     };
 
     let { error } = await supabase.from("bookings").insert([
@@ -739,29 +628,8 @@ export default function PropertyScreen() {
       ]);
       error = withoutGuests.error;
       if (error) {
-        const withoutPayment = await supabase.from("bookings").insert([
-          {
-            room_id: bookingDraft.room.id,
-            start_date: bookingDraft.startDate,
-            end_date: bookingDraft.endDate,
-            guest_name: guestName.trim() || null,
-            notify_arrival: notifyArrival,
-            notify_departure: notifyDeparture,
-            adults,
-            children,
-          },
-        ]);
-        error = withoutPayment.error;
-        if (error) {
-          const fallback = await supabase.from("bookings").insert([
-            {
-              room_id: bookingDraft.room.id,
-              start_date: bookingDraft.startDate,
-              end_date: bookingDraft.endDate,
-            },
-          ]);
-          error = fallback.error;
-        }
+        const fallback = await supabase.from("bookings").insert([base]);
+        error = fallback.error;
       }
     }
 
@@ -812,12 +680,6 @@ export default function PropertyScreen() {
     setAdults(2);
     setChildren(2);
     setBookingPrice("");
-    setDeposit("");
-    setSettlement("");
-    setPhone("");
-    setGuestInputFocused(false);
-    setPriceInputFocused(false);
-    setPhoneInputFocused(false);
     setNotifyArrival(true);
     setNotifyDeparture(true);
   }
@@ -852,17 +714,15 @@ export default function PropertyScreen() {
     textMonthFontWeight: "700" as const,
     "stylesheet.calendar.main": {
       container: {
-        paddingLeft: CALENDAR_WEEK_GAP,
-        paddingRight: CALENDAR_WEEK_GAP,
-        paddingTop: CALENDAR_WEEK_GAP,
-        paddingBottom: CALENDAR_WEEK_GAP,
+        paddingLeft: 0,
+        paddingRight: 0,
         backgroundColor: brand.white,
       },
       week: {
         flexDirection: "row" as const,
-        gap: CALENDAR_WEEK_GAP,
+        gap: 3,
         marginTop: 0,
-        marginBottom: CALENDAR_WEEK_GAP,
+        marginBottom: 3,
       },
       dayContainer: {
         flex: 1,
@@ -872,7 +732,7 @@ export default function PropertyScreen() {
     "stylesheet.calendar.header": {
       week: {
         flexDirection: "row" as const,
-        gap: CALENDAR_WEEK_GAP,
+        gap: 3,
         marginTop: 0,
         marginBottom: 6,
       },
@@ -911,15 +771,18 @@ export default function PropertyScreen() {
               style={[styles.headerPill, styles.headerSide]}
               onPress={() => router.back()}
             >
-              <Text style={styles.headerPillText}>Κατ/ματα</Text>
+              <Text style={styles.headerPillText}>{"<"} Σπίτια</Text>
             </Pressable>
+
 
             <View style={styles.yearMenu}>
               <Pressable
                 style={[styles.headerPill, styles.headerSide]}
                 onPress={() => setYearMenuOpen((prev) => !prev)}
               >
-                <Text style={styles.headerPillText}>{selectedYear} ▾</Text>
+                <Text style={styles.headerPillText}>
+                  {selectedYear} ▾
+                </Text>
               </Pressable>
 
               {yearMenuOpen ? (
@@ -985,199 +848,195 @@ export default function PropertyScreen() {
           keyboardDismissMode="on-drag"
         >
           <DismissKeyboard>
-            {rooms.length === 0 ? (
-              <View style={styles.panel}>
-                <Text style={styles.hint}>
-                  Πρόσθεσε ένα δωμάτιο για να εμφανιστεί το ημερολόγιό του.
-                </Text>
-              </View>
-            ) : (
-              rooms.map((room) => {
-                const start = selectStartByRoom[room.id] ?? null;
-                const roomBookings = bookings.filter(
-                  (b) => b.room_id === room.id,
-                );
+          {rooms.length === 0 ? (
+            <View style={styles.panel}>
+              <Text style={styles.hint}>
+                Πρόσθεσε ένα δωμάτιο για να εμφανιστεί το ημερολόγιό του.
+              </Text>
+            </View>
+          ) : (
+            rooms.map((room) => {
+              const start = selectStartByRoom[room.id] ?? null;
+              const roomBookings = bookings.filter(
+                (b) => b.room_id === room.id,
+              );
 
-                return (
-                  <View key={room.id} style={styles.panel}>
-                    <View style={styles.roomHeader}>
-                      <Pressable
-                        style={styles.deleteRoomButton}
-                        onPress={() => deleteRoom(room)}
-                      >
-                        <Text style={styles.deleteRoomButtonText}>🗑️</Text>
-                      </Pressable>
-                      <Text style={styles.roomHeaderTitle} numberOfLines={1}>
-                        {room.name}
-                      </Text>
-                      <Pressable
-                        style={styles.pricesButton}
-                        onPress={() => openPrices(room)}
-                      >
-                        <Text style={styles.pricesButtonText}>💵</Text>
-                      </Pressable>
-                    </View>
-                    <Text style={styles.hint}>
-                      {start
-                        ? `Έναρξη: ${start} — πάτα ημερομηνία λήξης (min 5 μέρες)`
-                        : "Επέλεξε ημερομηνία άφιξης, μετά ημερομηνία αναχώρησης"}
+              return (
+                <View key={room.id} style={styles.panel}>
+                  <View style={styles.roomHeader}>
+                    <Pressable
+                      style={styles.deleteRoomButton}
+                      onPress={() => deleteRoom(room)}
+                    >
+                      <Text style={styles.deleteRoomButtonText}>🗑️</Text>
+                    </Pressable>
+                    <Text style={styles.roomHeaderTitle} numberOfLines={1}>
+                      {room.name}
                     </Text>
+                    <Pressable
+                      style={styles.pricesButton}
+                      onPress={() => openPrices(room)}
+                    >
+                      <Text style={styles.pricesButtonText}>💵</Text>
+                    </Pressable>
+                  </View>
+                  <Text style={styles.hint}>
+                    {start
+                      ? `Έναρξη: ${start} — πάτα ημερομηνία λήξης (min 5 μέρες)`
+                      : "Πάτα ημερομηνία έναρξης, μετά ημερομηνία λήξης"}
+                  </Text>
 
-                    <Calendar
-                      markingType="period"
-                      style={styles.calendar}
-                      theme={calendarTheme}
-                      enableSwipeMonths
-                      hideExtraDays={false}
-                      showSixWeeks={true}
-                      firstDay={1}
-                      markedDates={markedDatesForRoom(room.id)}
-                      dayComponent={({ date, state, marking }) => {
-                        if (!date) {
-                          return <View style={styles.dayCell} />;
-                        }
+                  <Calendar
+                    markingType="period"
+                    style={styles.calendar}
+                    theme={calendarTheme}
+                    enableSwipeMonths
+                    hideExtraDays={false}
+                    showSixWeeks={true}
+                    firstDay={1}
+                    markedDates={markedDatesForRoom(room.id)}
+                    dayComponent={({ date, state, marking }) => {
+                      if (!date) {
+                        return <View style={styles.dayCell} />;
+                      }
 
-                        const mark = marking as
-                          | RoomAvailability[string]
-                          | undefined;
-                        const price = getPriceForNight(
-                          roomPrices,
-                          room.id,
-                          date.dateString,
-                        );
-                        const kind = mark?.kind;
-                        const isSplit = kind === "split";
-                        const isDeparture = kind === "departure";
-                        const isArrival = kind === "arrival";
-                        const bg =
-                          kind === "stay" && typeof mark?.color === "string"
-                            ? mark.color
-                            : undefined;
-                        const onStay = Boolean(bg);
-                        const textColor =
-                          isSplit || onStay
-                            ? brand.onAccent
-                            : isArrival
-                              ? brand.ink
-                              : state === "today"
-                                ? brand.primary
-                                : brand.ink;
+                      const mark = marking as
+                        | RoomAvailability[string]
+                        | undefined;
+                      const price = getPriceForNight(
+                        roomPrices,
+                        room.id,
+                        date.dateString,
+                      );
+                      const kind = mark?.kind;
+                      const isSplit = kind === "split";
+                      const isDeparture = kind === "departure";
+                      const isArrival = kind === "arrival";
+                      const bg =
+                        kind === "stay" && typeof mark?.color === "string"
+                          ? mark.color
+                          : undefined;
+                      const onStay = Boolean(bg);
+                      const textColor =
+                        isSplit || onStay
+                          ? brand.white
+                          : isArrival
+                            ? brand.ink
+                            : state === "today"
+                              ? brand.primary
+                              : brand.ink;
 
-                        return (
-                          <Pressable
-                            style={[
-                              styles.dayCell,
-                              (isDeparture ||
-                                isArrival ||
-                                (!onStay && !isSplit)) &&
-                                styles.dayCellIdle,
-                              bg ? { backgroundColor: bg } : null,
-                              mark?.selected && styles.dayCellSelected,
-                            ]}
-                            onPress={() =>
-                              handleDayPress(room, date.dateString)
-                            }
-                            onLongPress={() =>
-                              handleDayLongPress(room, date.dateString)
-                            }
-                          >
-                            {isSplit ? (
-                              <>
-                                <View
-                                  style={[
-                                    StyleSheet.absoluteFill,
-                                    { backgroundColor: brand.calendarBlue },
-                                  ]}
-                                />
-                                <View style={styles.daySplitTriangle} />
-                              </>
-                            ) : null}
-                            {isDeparture ? (
-                              <View style={styles.daySplitTriangle} />
-                            ) : null}
-                            {isArrival ? (
-                              <View style={styles.dayArrivalTriangle} />
-                            ) : null}
-                            <Text
-                              style={[styles.dayNumber, { color: textColor }]}
-                            >
-                              {date.day}
-                            </Text>
-                            <Text
-                              style={[
-                                styles.dayPrice,
-                                {
-                                  color:
-                                    isSplit || onStay
-                                      ? brand.onAccent
-                                      : brand.ink,
-                                },
-                              ]}
-                            >
-                              {price > 0 ? `${price}€` : " "}
-                            </Text>
-                          </Pressable>
-                        );
-                      }}
-                    />
-
-                    <View style={styles.legend}>
-                      <View style={styles.legendItem}>
-                        <View style={styles.dotSplit}>
-                          <View style={styles.dotSplitSand} />
-                          <View style={styles.dotArrivalTeal} />
-                        </View>
-                        <Text style={styles.legendText}>Άφιξη</Text>
-                      </View>
-                      <View style={styles.legendItem}>
-                        <View
+                      return (
+                        <Pressable
                           style={[
-                            styles.dot,
-                            { backgroundColor: brand.calendarBlue },
+                            styles.dayCell,
+                            (isDeparture ||
+                              isArrival ||
+                              (!onStay && !isSplit)) &&
+                              styles.dayCellIdle,
+                            bg ? { backgroundColor: bg } : null,
+                            mark?.selected && styles.dayCellSelected,
                           ]}
-                        />
-                        <Text style={styles.legendText}>Διαμονή</Text>
+                          onPress={() => handleDayPress(room, date.dateString)}
+                          onLongPress={() =>
+                            handleDayLongPress(room, date.dateString)
+                          }
+                        >
+                          {isSplit ? (
+                            <>
+                              <View
+                                style={[
+                                  StyleSheet.absoluteFill,
+                                  { backgroundColor: brand.calendarBlue },
+                                ]}
+                              />
+                              <View style={styles.daySplitTriangle} />
+                            </>
+                          ) : null}
+                          {isDeparture ? (
+                            <View style={styles.daySplitTriangle} />
+                          ) : null}
+                          {isArrival ? (
+                            <View style={styles.dayArrivalTriangle} />
+                          ) : null}
+                          <Text
+                            style={[styles.dayNumber, { color: textColor }]}
+                          >
+                            {date.day}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.dayPrice,
+                              {
+                                color:
+                                  isSplit || onStay ? brand.white : brand.ink,
+                              },
+                            ]}
+                          >
+                            {price > 0 ? `${price}€` : " "}
+                          </Text>
+                        </Pressable>
+                      );
+                    }}
+                  />
+
+                  <View style={styles.legend}>
+                    <View style={styles.legendItem}>
+                      <View style={styles.dotSplit}>
+                        <View style={styles.dotSplitSand} />
+                        <View style={styles.dotArrivalTeal} />
                       </View>
-                      <View style={styles.legendItem}>
-                        <View style={styles.dotSplit}>
-                          <View style={styles.dotSplitSand} />
-                          <View style={styles.dotSplitOrange} />
-                        </View>
-                        <Text style={styles.legendText}>Αναχώρηση</Text>
-                      </View>
-                      <View style={styles.legendItem}>
-                        <View style={styles.dotSplit}>
-                          <View style={styles.dotSplitTeal} />
-                          <View style={styles.dotSplitOrange} />
-                        </View>
-                        <Text style={styles.legendText}>Αφίξη & Αναχώρηση</Text>
-                      </View>
+                      <Text style={styles.legendText}>Άφιξη</Text>
                     </View>
-
-                    <Text style={styles.hint}>
-                      Κρατήστε πατημένο σε μια ημερομηνία για σημείωση (αλλαγή
-                      σεντονιών / πρόωρη αναχώρηση).
-                    </Text>
-
-                    <Text style={styles.incomeText}>
-                       Εσόδα δωματίου: {` `}
-                      {`${getRoomIncome(bookings, roomPrices, room.id).toFixed(2)}€`}
-                    </Text>
-
-                    <View style={styles.bookingsList}>
-                      <Pressable
-                        onPress={() => setBookingRoomId(room.id)}
-                        style={styles.bookingsButton}
-                      >
-                        <Text style={styles.bookingListTitle}>
-                          Κρατήσεις ({roomBookings.length})
-                        </Text>
-                      </Pressable>
+                    <View style={styles.legendItem}>
+                      <View
+                        style={[
+                          styles.dot,
+                          { backgroundColor: brand.calendarBlue },
+                        ]}
+                      />
+                      <Text style={styles.legendText}>Διαμονή</Text>
+                    </View>
+                    <View style={styles.legendItem}>
+                      <View style={styles.dotSplit}>
+                        <View style={styles.dotSplitSand} />
+                        <View style={styles.dotSplitOrange} />
+                      </View>
+                      <Text style={styles.legendText}>Αναχώρηση</Text>
+                    </View>
+                    <View style={styles.legendItem}>
+                      <View style={styles.dotSplit}>
+                        <View style={styles.dotSplitTeal} />
+                        <View style={styles.dotSplitOrange} />
+                      </View>
+                      <Text style={styles.legendText}>Αφίξη & Αναχώρηση</Text>
                     </View>
                   </View>
-                );
-              })
-            )}
+
+                  <Text style={styles.hint}>
+                    Κρατήστε πατημένο σε μια ημερομηνία για σημείωση (αλλαγή
+                    σεντονιών / πρόωρη αναχώρηση).
+                  </Text>
+
+                  <Text style={styles.incomeText}>
+                    Σύνολο εσόδων δωματίου:
+                    {`${getRoomIncome(bookings, roomPrices, room.id).toFixed(2)}€`}
+                  </Text>
+
+                  <View style={styles.bookingsList}>
+                    <Pressable
+                      onPress={() => setBookingRoomId(room.id)}
+                      style={styles.bookingsButton}
+                    >
+                      <Text style={styles.bookingListTitle}>
+                        Κρατήσεις ({roomBookings.length})
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
+              );
+            })
+          )}
           </DismissKeyboard>
         </ScrollView>
       </SafeAreaView>
@@ -1300,67 +1159,86 @@ export default function PropertyScreen() {
         transparent
         onRequestClose={closeBookingDraft}
       >
-        <KeyboardAvoidingView
-          style={styles.modalOverlay}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-        >
-          <View
-            style={[
-              styles.bookingModalPanel,
-              {
-                width: Math.min(winWidth - 40, 440),
-                maxHeight: winHeight * 0.9,
-              },
-            ]}
-          >
+        <View style={styles.modalOverlay}>
+          <DismissKeyboard style={styles.bookingModalPanel}>
             <Text style={styles.bookingModalTitle}>Νέα κράτηση</Text>
             {bookingDraft ? (
-              <ScrollView
-                ref={bookingScrollRef}
-                style={styles.bookingModalScroll}
-                contentContainerStyle={styles.bookingModalScrollContent}
-                keyboardShouldPersistTaps="always"
-                keyboardDismissMode="on-drag"
-                onScrollBeginDrag={Keyboard.dismiss}
-                showsVerticalScrollIndicator={false}
-              >
+              <>
                 <Text style={styles.bookingModalDates}>
+                  {bookingDraft.room.name} ·{" "}
                   {formatDisplayDate(bookingDraft.startDate)} →{" "}
-                  {formatDisplayDate(bookingDraft.endDate)}
-                </Text>
-                <Text style={styles.bookingModalDates}>
+                  {formatDisplayDate(bookingDraft.endDate)} ·{" "}
                   {countNights(bookingDraft.startDate, bookingDraft.endDate)}{" "}
                   διανυκτ.
                 </Text>
 
-                <ScrollFriendlyTextInput
-                  style={styles.bookingGuestInput}
-                  value={guestName}
-                  onChangeText={setGuestName}
-                  onFocus={() => setGuestInputFocused(true)}
-                  onBlur={() => setGuestInputFocused(false)}
+                <Text style={styles.bookingModalCost}>
+                  Εκτιμώμενο κόστος:{" "}
+                  <Text style={styles.bookingModalCostValue}>
+                    {(() => {
+                      const nights = countNights(
+                        bookingDraft.startDate,
+                        bookingDraft.endDate,
+                      );
+                      const parsed = Number.parseFloat(
+                        bookingPrice.replace(",", "."),
+                      );
+                      if (Number.isFinite(parsed) && parsed > 0) {
+                        return (parsed * nights).toFixed(2);
+                      }
+                      return getBookingIncome(
+                        {
+                          id: "draft",
+                          room_id: bookingDraft.room.id,
+                          start_date: bookingDraft.startDate,
+                          end_date: bookingDraft.endDate,
+                        },
+                        roomPrices,
+                      ).toFixed(2);
+                    })()}
+                    €
+                  </Text>
+                  {(() => {
+                    const parsed = Number.parseFloat(
+                      bookingPrice.replace(",", "."),
+                    );
+                    const hasPrice =
+                      Number.isFinite(parsed) && parsed > 0;
+                    const missing = bookingHasMissingPrices(
+                      {
+                        id: "draft",
+                        room_id: bookingDraft.room.id,
+                        start_date: bookingDraft.startDate,
+                        end_date: bookingDraft.endDate,
+                      },
+                      roomPrices,
+                    );
+                    if (!missing || hasPrice) return null;
+                    return (
+                      <Text style={styles.bookingMissingPriceHint}>
+                        {" "}
+                        (υπάρχουν μέρες χωρίς ορισμένη τιμή)
+                      </Text>
+                    );
+                  })()}
+                </Text>
+
+                <TextInput
+                  style={[
+                    styles.bookingGuestInput,
+                    {
+                      textAlign: guestName.trim() ? "left" : "center",
+                    },
+                  ]}
                   placeholder="Όνομα πελάτη"
                   placeholderTextColor={brand.claySoft}
-                  textAlign={guestInputFocused ? "left" : "center"}
-                />
-
-                <ScrollFriendlyTextInput
-                  style={styles.bookingGuestInput}
-                  value={phone}
-                  onChangeText={setPhone}
-                  onFocus={() => setPhoneInputFocused(true)}
-                  onBlur={() => setPhoneInputFocused(false)}
-                  keyboardType="phone-pad"
-                  placeholder="Τηλέφωνο"
-                  placeholderTextColor={brand.claySoft}
-                  textAlign={phoneInputFocused ? "left" : "center"}
+                  value={guestName}
+                  onChangeText={setGuestName}
                 />
 
                 <View style={[styles.guestsBox, styles.guestsRow]}>
                   <View style={styles.guestStepper}>
-                    <Text
-                      style={[styles.stepperLabel, styles.guestStepperLabel]}
-                    >
+                    <Text style={[styles.stepperLabel, styles.guestStepperLabel]}>
                       Ενήλικες
                     </Text>
                     <View style={styles.stepperControls}>
@@ -1381,9 +1259,7 @@ export default function PropertyScreen() {
                   </View>
 
                   <View style={styles.guestStepper}>
-                    <Text
-                      style={[styles.stepperLabel, styles.guestStepperLabelChildren]}
-                    >
+                    <Text style={[styles.stepperLabel, styles.guestStepperLabel]}>
                       Παιδιά
                     </Text>
                     <View style={styles.stepperControls}>
@@ -1393,7 +1269,7 @@ export default function PropertyScreen() {
                       >
                         <Text style={styles.stepperBtnText}>−</Text>
                       </Pressable>
-                      <Text style={styles.stepperValueChildren}>{children}</Text>
+                      <Text style={styles.stepperValue}>{children}</Text>
                       <Pressable
                         style={styles.stepperBtn}
                         onPress={() => setChildren((v) => Math.min(4, v + 1))}
@@ -1404,79 +1280,26 @@ export default function PropertyScreen() {
                   </View>
                 </View>
 
-                <View
-                  style={styles.bookingCostPanel}
-                  onLayout={(e) => {
-                    bookingCostPanelY.current = e.nativeEvent.layout.y;
-                  }}
-                >
-                  <View
+                <View style={styles.bookingPriceBox}>
+                  <Text style={styles.bookingPriceLabel}>
+                    Κόστος διανυκτέρευσης (€)
+                  </Text>
+                  <TextInput
                     style={[
-                      styles.bookingPaymentRow,
-                      isCompact && styles.bookingPaymentRowStacked,
+                      styles.bookingGuestInput,
+                      {
+                        textAlign: bookingPrice.trim() ? "left" : "center",
+                      },
                     ]}
-                  >
-                    <View style={styles.bookingPaymentCol}>
-                      <Text style={styles.bookingPaymentLabel}>
-                        Κόστος διαν/σης (€)
-                      </Text>
-                      <ScrollFriendlyTextInput
-                        style={styles.bookingPaymentInput}
-                        value={bookingPrice}
-                        onChangeText={setBookingPrice}
-                        onFocus={() => {
-                          setPriceInputFocused(true);
-                          scrollBookingToCostPanel();
-                        }}
-                        onBlur={() => setPriceInputFocused(false)}
-                        keyboardType="decimal-pad"
-                        placeholder="π.χ. 55"
-                        placeholderTextColor={brand.claySoft}
-                        textAlign={priceInputFocused ? "left" : "center"}
-                      />
-                    </View>
-                    <View style={styles.bookingPaymentCol}>
-                      <Text style={styles.bookingPaymentLabel}>
-                        Συνολικό κόστος
-                      </Text>
-                      <Text style={styles.bookingPaymentRemaining}>
-                        {draftTotalCost.toFixed(2)}€
-                      </Text>
-                    </View>
-                  </View>
-                  {draftHasMissingPrice ? (
-                    <Text style={styles.bookingMissingPriceHint}>
-                      (υπάρχουν μέρες χωρίς ορισμένη τιμή)
-                    </Text>
-                  ) : null}
-
-                  <View
-                    style={[
-                      styles.bookingPaymentRow,
-                      isCompact && styles.bookingPaymentRowStacked,
-                    ]}
-                  >
-                    <View style={styles.bookingPaymentCol}>
-                      <Text style={styles.bookingPaymentLabel}>
-                        Προκαταβολή
-                      </Text>
-                      <ScrollFriendlyTextInput
-                        style={styles.bookingPaymentInput}
-                        value={deposit}
-                        onChangeText={setDeposit}
-                        onFocus={scrollBookingToCostPanel}
-                        keyboardType="decimal-pad"
-                        placeholder="0"
-                        placeholderTextColor={brand.claySoft}
-                      />
-                    </View>
-                    <View style={styles.bookingPaymentCol}>
-                      <Text style={styles.bookingPaymentLabel}>Υπόλοιπο</Text>
-                      <Text style={styles.bookingPaymentRemaining}>
-                        {draftRemaining.toFixed(2)}€
-                      </Text>
-                    </View>
-                  </View>
+                    placeholder="π.χ. 55"
+                    placeholderTextColor={brand.claySoft}
+                    value={bookingPrice}
+                    onChangeText={setBookingPrice}
+                    keyboardType="decimal-pad"
+                  />
+                  <Text style={styles.bookingPriceHint}>
+                    Υπερισχύει των οριζόμενων τιμών.
+                  </Text>
                 </View>
 
                 <Pressable
@@ -1537,10 +1360,10 @@ export default function PropertyScreen() {
                     </Text>
                   </Pressable>
                 </View>
-              </ScrollView>
+              </>
             ) : null}
-          </View>
-        </KeyboardAvoidingView>
+          </DismissKeyboard>
+        </View>
       </Modal>
 
       <Modal
@@ -1549,130 +1372,105 @@ export default function PropertyScreen() {
         transparent
         onRequestClose={() => setPricingRoom(null)}
       >
-        <KeyboardAvoidingView
-          style={styles.modalOverlay}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-        >
-          <View style={styles.pricingModalPanel}>
-            <ScrollView
-              ref={pricingScrollRef}
-              style={styles.pricingModalScroll}
-              contentContainerStyle={styles.pricingModalScrollContent}
-              keyboardShouldPersistTaps="always"
-              keyboardDismissMode="on-drag"
-              onScrollBeginDrag={Keyboard.dismiss}
-              showsVerticalScrollIndicator
-            >
-              <Text style={styles.modalDate}>Τιμές — {pricingRoom?.name}</Text>
+        <View style={styles.modalOverlay}>
+          <DismissKeyboard style={styles.modalPanel}>
+            <Text style={styles.modalDate}>Τιμές — {pricingRoom?.name}</Text>
 
-              {roomPrices.filter(
-                (p) =>
-                  p.room_id === pricingRoom?.id &&
-                  !isBookingCoveredPrice(p, bookings),
-              ).length === 0 ? (
-                <Text style={styles.modalSubtitle}>
-                  Δεν έχουν οριστεί τιμές.
+            {roomPrices.filter((p) => p.room_id === pricingRoom?.id).length ===
+            0 ? (
+              <Text style={styles.modalSubtitle}>Δεν έχουν οριστεί τιμές.</Text>
+            ) : (
+              roomPrices
+                .filter((p) => p.room_id === pricingRoom?.id)
+                .map((price) => (
+                  <View key={price.id} style={styles.priceRow}>
+                    <Text style={styles.priceRowText}>
+                      {formatDisplayDate(price.start_date)} →{" "}
+                      {formatDisplayDate(price.end_date)}
+                      {"  "}
+                      {price.price_per_night.toFixed(2)}€/διαν.
+                    </Text>
+                    <Pressable
+                      style={styles.priceDelete}
+                      onPress={() => deleteRoomPrice(price.id)}
+                    >
+                      <Text style={styles.priceDeleteText}>Διαγραφή</Text>
+                    </Pressable>
+                  </View>
+                ))
+            )}
+
+            <Text style={styles.priceSectionTitle}>Νέα περίοδος τιμής</Text>
+
+            <View style={styles.priceDateRow}>
+              <View style={styles.priceDateField}>
+                <TextInput
+                  style={styles.priceInput}
+                  placeholder="dd/mm/yyyy"
+                  placeholderTextColor={brand.claySoft}
+                  value={priceStart ? formatDisplayDate(priceStart) : ""}
+                  onChangeText={(text) => {
+                    setPriceStart(parseDateInput(text) ?? text);
+                  }}
+                />
+                <Pressable
+                  style={styles.priceCalendarBtn}
+                  onPress={() => setPriceDateField("start")}
+                >
+                  <Text>📅</Text>
+                </Pressable>
+              </View>
+              <View style={styles.priceDateField}>
+                <TextInput
+                  style={styles.priceInput}
+                  placeholder="dd/mm/yyyy"
+                  placeholderTextColor={brand.claySoft}
+                  value={priceEnd ? formatDisplayDate(priceEnd) : ""}
+                  onChangeText={(text) => {
+                    setPriceEnd(parseDateInput(text) ?? text);
+                  }}
+                />
+                <Pressable
+                  style={styles.priceCalendarBtn}
+                  onPress={() => setPriceDateField("end")}
+                >
+                  <Text>📅</Text>
+                </Pressable>
+              </View>
+            </View>
+
+            <TextInput
+              style={styles.priceInput}
+              placeholder="€ / διανυκτέρευση"
+              placeholderTextColor={brand.claySoft}
+              value={priceAmount}
+              onChangeText={setPriceAmount}
+              keyboardType="decimal-pad"
+            />
+
+            <View style={styles.priceActions}>
+              <Pressable
+                style={[styles.modalCancel, styles.priceActionBtn]}
+                onPress={() => setPricingRoom(null)}
+              >
+                <Text style={styles.modalCancelText}>Κλείσιμο</Text>
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.modalConfirm,
+                  styles.priceActionBtn,
+                  savingPrice && { opacity: 0.6 },
+                ]}
+                onPress={addRoomPrice}
+                disabled={savingPrice}
+              >
+                <Text style={styles.modalConfirmText}>
+                  {savingPrice ? "..." : "Προσθήκη"}
                 </Text>
-              ) : (
-                roomPrices
-                  .filter(
-                    (p) =>
-                      p.room_id === pricingRoom?.id &&
-                      !isBookingCoveredPrice(p, bookings),
-                  )
-                  .map((price) => (
-                    <View key={price.id} style={styles.priceRow}>
-                      <Text style={styles.priceRowText} numberOfLines={2}>
-                        {formatDisplayDate(price.start_date)} →{" "}
-                        {formatDisplayDate(price.end_date)}
-                        {"  "}
-                        {price.price_per_night.toFixed(2)}€/διαν.
-                      </Text>
-                      <TouchableOpacity
-                        style={styles.priceDelete}
-                        activeOpacity={0.7}
-                        onPress={() => void deleteRoomPrice(price.id)}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <Text style={styles.priceDeleteText}>Διαγραφή</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ))
-              )}
-
-              <Text style={styles.priceSectionTitle}>Νέα περίοδος τιμής</Text>
-
-              <View style={styles.priceDateRow}>
-                <View style={styles.priceDateField}>
-                  <ScrollFriendlyTextInput
-                    style={styles.priceInput}
-                    placeholder="dd/mm/yyyy"
-                    placeholderTextColor={brand.claySoft}
-                    value={priceStart ? formatDisplayDate(priceStart) : ""}
-                    onChangeText={(text) => {
-                      setPriceStart(parseDateInput(text) ?? text);
-                    }}
-                  />
-                  <Pressable
-                    style={styles.priceCalendarBtn}
-                    onPress={() => setPriceDateField("start")}
-                  >
-                    <Text>📅</Text>
-                  </Pressable>
-                </View>
-                <View style={styles.priceDateField}>
-                  <ScrollFriendlyTextInput
-                    style={styles.priceInput}
-                    placeholder="dd/mm/yyyy"
-                    placeholderTextColor={brand.claySoft}
-                    value={priceEnd ? formatDisplayDate(priceEnd) : ""}
-                    onChangeText={(text) => {
-                      setPriceEnd(parseDateInput(text) ?? text);
-                    }}
-                  />
-                  <Pressable
-                    style={styles.priceCalendarBtn}
-                    onPress={() => setPriceDateField("end")}
-                  >
-                    <Text>📅</Text>
-                  </Pressable>
-                </View>
-              </View>
-
-              <ScrollFriendlyTextInput
-                style={styles.priceInput}
-                placeholder="€ / διανυκτέρευση"
-                placeholderTextColor={brand.claySoft}
-                value={priceAmount}
-                onChangeText={setPriceAmount}
-                onFocus={scrollPricingToAmount}
-                keyboardType="decimal-pad"
-              />
-
-              <View style={styles.priceActions}>
-                <Pressable
-                  style={[styles.modalCancel, styles.priceActionBtn]}
-                  onPress={() => setPricingRoom(null)}
-                >
-                  <Text style={styles.modalCancelText}>Κλείσιμο</Text>
-                </Pressable>
-                <Pressable
-                  style={[
-                    styles.modalConfirm,
-                    styles.priceActionBtn,
-                    savingPrice && { opacity: 0.6 },
-                  ]}
-                  onPress={addRoomPrice}
-                  disabled={savingPrice}
-                >
-                  <Text style={styles.modalConfirmText}>
-                    {savingPrice ? "..." : "Προσθήκη"}
-                  </Text>
-                </Pressable>
-              </View>
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
+              </Pressable>
+            </View>
+          </DismissKeyboard>
+        </View>
       </Modal>
 
       <Modal
@@ -1712,19 +1510,14 @@ export default function PropertyScreen() {
   );
 }
 
-const CALENDAR_WEEK_GAP = 3;
-
 function createStyles(scale: number, brand: BrandColors) {
   const s = (n: number) => fs(n, scale);
-  const weekGap = CALENDAR_WEEK_GAP;
-  const calendarWidthRatio = 0.92;
+  const weekGap = 3;
+  const calendarWidthRatio = 0.96;
   const contentPad = 32;
-  const calendarPad = weekGap;
   const calendarWidth =
     (Dimensions.get("window").width - contentPad) * calendarWidthRatio;
-  const daySize = Math.floor(
-    (calendarWidth - calendarPad * 2 - weekGap * 6) / 7,
-  );
+  const daySize = Math.floor((calendarWidth - weekGap * 6) / 7);
 
   return StyleSheet.create({
     root: {
@@ -1736,13 +1529,13 @@ function createStyles(scale: number, brand: BrandColors) {
     },
     dim: {
       ...StyleSheet.absoluteFill,
-      backgroundColor: brand.overlay,
+      backgroundColor: "rgba(44, 36, 28, 0.45)",
     },
     safe: {
       flex: 1,
     },
     propertyHeader: {
-      backgroundColor: brand.primaryStrong,
+      backgroundColor: "#16323A",
       paddingVertical: 6,
       paddingHorizontal: 18,
       zIndex: 20,
@@ -1760,24 +1553,18 @@ function createStyles(scale: number, brand: BrandColors) {
     },
     headerPill: {
       borderWidth: 1,
-      borderColor: brand.onAccentBorder,
+      borderColor: "rgba(255,255,255,0.35)",
       borderRadius: 10,
       paddingHorizontal: 10,
       paddingVertical: 8,
-      width: "100%",
-      minHeight: 36,
-      alignItems: "center",
-      justifyContent: "center",
     },
     headerSide: {
       zIndex: 1,
-      width: 102,
     },
     headerPillText: {
-      color: brand.onAccent,
+      color: "#f2ebe3",
       fontWeight: "700",
       fontSize: s(13),
-      textAlign: "center",
     },
     headerTitleBtn: {
       position: "absolute",
@@ -1791,7 +1578,7 @@ function createStyles(scale: number, brand: BrandColors) {
       zIndex: 0,
     },
     headerTitleText: {
-      color: brand.onAccent,
+      color: "#ffffff",
       fontWeight: "700",
       fontSize: s(17),
       textAlign: "center",
@@ -1804,9 +1591,9 @@ function createStyles(scale: number, brand: BrandColors) {
     expensesBtn: {
       flex: 1,
       minWidth: 0,
-      backgroundColor: brand.warningSoft,
+      backgroundColor: "rgba(217, 138, 61, 0.22)",
       borderWidth: 1,
-      borderColor: brand.warningBorder,
+      borderColor: "rgba(217, 138, 61, 0.5)",
       borderRadius: 7,
       paddingVertical: 4,
       paddingHorizontal: 2,
@@ -1814,10 +1601,10 @@ function createStyles(scale: number, brand: BrandColors) {
       justifyContent: "center",
     },
     expensesBtnText: {
-      fontSize: 12,
-      lineHeight: 14,
-      color: brand.onAccent,
+      color: "#F1EFE6",
       fontWeight: "600",
+      fontSize: 11.5,
+      lineHeight: 14,
     },
     content: {
       padding: 16,
@@ -1835,7 +1622,7 @@ function createStyles(scale: number, brand: BrandColors) {
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
-      backgroundColor: brand.roomSection,
+      backgroundColor: brand.primary,
       paddingHorizontal: 12,
       paddingVertical: 8,
       borderTopLeftRadius: 14,
@@ -1848,32 +1635,35 @@ function createStyles(scale: number, brand: BrandColors) {
       flex: 1,
       flexShrink: 1,
       textAlign: "center",
-      color: brand.onAccent,
+      color: "#ffffff",
       fontSize: s(16),
       fontWeight: "700",
     },
     pricesButton: {
-      paddingHorizontal: 8,
-      paddingVertical: 6,
+      backgroundColor: brand.primary,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
       borderRadius: 10,
+      borderWidth: 1,
+      borderColor: "#ffffff",
     },
     pricesButtonText: {
-      color: brand.onAccent,
+      color: "#ffffff",
       fontWeight: "700",
       fontSize: s(13),
     },
     deleteRoomButton: {
-      paddingHorizontal: 8,
-      paddingVertical: 6,
+      backgroundColor: brand.danger,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
       borderRadius: 10,
     },
     deleteRoomButtonText: {
-      color: brand.onAccent,
+      color: "#ffffff",
       fontWeight: "700",
       fontSize: s(13),
     },
     incomeText: {
-      textAlign: "center",
       marginTop: 12,
       fontSize: s(14),
       fontWeight: "600",
@@ -1887,30 +1677,28 @@ function createStyles(scale: number, brand: BrandColors) {
       marginBottom: 8,
     },
     hint: {
-      textAlign: "center",
-      fontSize: 10,
+      fontSize: s(12),
       color: brand.claySoft,
       marginBottom: 8,
       marginTop: 4,
-      lineHeight:16,
+      lineHeight: s(16),
     },
     legend: {
       flexDirection: "row",
-      flexWrap: "wrap",
-      justifyContent: "center",
+      flexWrap: "nowrap",
+      justifyContent: "space-between",
       alignItems: "center",
-      columnGap: 10,
-      rowGap: 6,
+      gap: 4,
       marginTop: 6,
       marginBottom: 2,
-      width: daySize * 7 + weekGap * 6 + calendarPad * 2,
+      width: daySize * 7 + weekGap * 6,
       alignSelf: "center",
     },
     legendItem: {
       flexDirection: "row",
       alignItems: "center",
       gap: 4,
-      flexShrink: 0,
+      flexShrink: 1,
     },
     dot: {
       width: 10,
@@ -1956,12 +1744,13 @@ function createStyles(scale: number, brand: BrandColors) {
       borderLeftColor: "transparent",
     },
     legendText: {
-      fontSize: 10,
+      fontSize: s(10),
       color: brand.claySoft,
+      flexShrink: 1,
     },
     calendar: {
       alignSelf: "center",
-      width: daySize * 7 + weekGap * 6 + calendarPad * 2,
+      width: daySize * 7 + weekGap * 6,
       borderRadius: 14,
       overflow: "hidden",
     },
@@ -1969,7 +1758,7 @@ function createStyles(scale: number, brand: BrandColors) {
     // modal styles
     modalOverlay: {
       flex: 1,
-      backgroundColor: brand.overlay,
+      backgroundColor: "rgba(44, 36, 28, 0.55)",
       justifyContent: "center",
       padding: 20,
     },
@@ -1979,32 +1768,13 @@ function createStyles(scale: number, brand: BrandColors) {
       overflow: "hidden",
       padding: 22,
       gap: 12,
-      maxHeight: "85%",
-    },
-    pricingModalPanel: {
-      width: windowWidth - 40,
-      height: windowHeight * 0.85,
-      backgroundColor: brand.white,
-      borderRadius: 8,
-      overflow: "hidden",
-      padding: 22,
-      alignSelf: "center",
-    },
-    pricingModalScroll: {
-      flex: 1,
-    },
-    pricingModalScrollContent: {
-      gap: 10,
-      paddingBottom: 120,
     },
     modalDate: {
-      textAlign: "center",
       fontSize: s(28),
       fontWeight: "700",
       color: brand.ink,
     },
     modalSubtitle: {
-      textAlign: "center",
       fontSize: s(15),
       color: brand.claySoft,
       marginBottom: 4,
@@ -2041,7 +1811,7 @@ function createStyles(scale: number, brand: BrandColors) {
       alignItems: "center",
     },
     modalConfirmText: {
-      color: brand.onAccent,
+      color: brand.white,
       fontWeight: "700",
       fontSize: s(16),
     },
@@ -2068,21 +1838,16 @@ function createStyles(scale: number, brand: BrandColors) {
     },
     priceRowText: {
       flex: 1,
-      flexShrink: 1,
       fontSize: s(13),
       color: brand.ink,
       fontWeight: "600",
     },
     priceDelete: {
-      flexShrink: 0,
-      zIndex: 2,
       borderWidth: 1,
       borderColor: brand.danger,
       borderRadius: 8,
       paddingHorizontal: 8,
       paddingVertical: 6,
-      minHeight: 32,
-      justifyContent: "center",
     },
     priceDeleteText: {
       color: brand.danger,
@@ -2091,7 +1856,6 @@ function createStyles(scale: number, brand: BrandColors) {
     },
     priceSectionTitle: {
       marginTop: 4,
-      textAlign: "center",
       fontSize: s(15),
       fontWeight: "700",
       color: brand.ink,
@@ -2171,14 +1935,14 @@ function createStyles(scale: number, brand: BrandColors) {
       borderLeftColor: "transparent",
     },
     dayNumber: {
-      fontSize: s(14),
-      lineHeight: s(16),
+      fontSize: s(12),
+      lineHeight: s(14),
       fontWeight: "600",
       zIndex: 1,
     },
     dayPrice: {
-      fontSize: s(10),
-      lineHeight: s(11),
+      fontSize: s(8),
+      lineHeight: s(9),
       marginTop: 0,
       zIndex: 1,
     },
@@ -2188,14 +1952,6 @@ function createStyles(scale: number, brand: BrandColors) {
       overflow: "hidden",
       padding: 22,
       gap: 12,
-      alignSelf: "center",
-    },
-    bookingModalScroll: {
-      flexGrow: 0,
-    },
-    bookingModalScrollContent: {
-      gap: 12,
-      paddingBottom: 120,
     },
     bookingModalTitle: {
       textAlign: "center",
@@ -2205,7 +1961,6 @@ function createStyles(scale: number, brand: BrandColors) {
       fontFamily: Fonts?.serif,
     },
     bookingModalDates: {
-      textAlign: "center",
       fontSize: s(13),
       color: brand.claySoft,
       fontFamily: Fonts?.mono,
@@ -2241,11 +1996,6 @@ function createStyles(scale: number, brand: BrandColors) {
       alignItems: "center",
     },
     guestStepperLabel: {
-      color: brand.primary,
-      textAlign: "center",
-    },
-    guestStepperLabelChildren: {
-      color: brand.danger,
       textAlign: "center",
     },
     bookingPriceBox: {
@@ -2298,53 +2048,21 @@ function createStyles(scale: number, brand: BrandColors) {
       lineHeight: s(20),
     },
     stepperValue: {
-      color: brand.primary,
       minWidth: 24,
       textAlign: "center",
       fontSize: s(16),
       fontWeight: "700",
-    },
-    stepperValueChildren: {
-      color: brand.danger,
-      fontSize: s(16),
-      fontWeight: "700",
-      textAlign: "center",
-    },
-    bookingGuestInputWrap: {
-      borderWidth: 1.5,
-      borderColor: brand.primary,
-      borderRadius: 10,
-      backgroundColor: brand.white,
-      justifyContent: "center",
-      shadowColor: brand.primary,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.22,
-      shadowRadius: 5,
-      elevation: 4,
-    },
-    bookingGuestPlaceholder: {
-      position: "absolute",
-      left: 12,
-      right: 12,
-      textAlign: "center",
-      fontSize: s(15),
-      color: brand.claySoft,
-      zIndex: 1,
+      color: brand.ink,
     },
     bookingGuestInput: {
-      borderWidth: 1.5,
-      borderColor: brand.primary,
+      borderWidth: 1,
+      borderColor: brand.sandDeep,
       borderRadius: 10,
-      backgroundColor: brand.white,
       paddingHorizontal: 12,
       paddingVertical: 10,
       fontSize: s(15),
       color: brand.ink,
-      shadowColor: brand.primary,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.22,
-      shadowRadius: 5,
-      elevation: 4,
+      backgroundColor: brand.white,
     },
     checkboxRow: {
       flexDirection: "row",
@@ -2367,7 +2085,7 @@ function createStyles(scale: number, brand: BrandColors) {
       borderColor: brand.calendarBlue,
     },
     checkboxTick: {
-      color: brand.onAccent,
+      color: brand.white,
       fontSize: s(14),
       fontWeight: "700",
     },
@@ -2403,14 +2121,14 @@ function createStyles(scale: number, brand: BrandColors) {
     bookingsButton: {
       alignItems: "center",
       textAlign: "center",
-      backgroundColor: brand.roomSection,
+      backgroundColor: brand.primary,
       borderRadius: 8,
       paddingHorizontal: 18,
       paddingVertical: 10,
     },
 
     bookingSaveText: {
-      color: brand.onAccent,
+      color: brand.white,
       fontWeight: "700",
     },
     bookingsList: {
@@ -2419,95 +2137,43 @@ function createStyles(scale: number, brand: BrandColors) {
     bookingListTitle: {
       fontSize: s(15),
       fontWeight: "700",
-      color: brand.onAccent,
+      color: brand.ink,
       marginBottom: 6,
       textAlign: "center",
     },
     yearMenu: {
       position: "relative",
       zIndex: 30,
-      width: 102,
     },
     yearDropdown: {
       position: "absolute",
       top: "100%",
-      left: 0,
       right: 0,
       marginTop: 4,
       backgroundColor: brand.white,
-      borderRadius: 10,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: brand.ink,
       zIndex: 40,
       elevation: 8,
+      minWidth: 96,
       overflow: "hidden",
     },
     yearDropdownItem: {
-      minHeight: 36,
-      paddingVertical: 8,
-      paddingHorizontal: 10,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
       alignItems: "center",
-      justifyContent: "center",
     },
     yearDropdownItemActive: {
       backgroundColor: brand.sand,
     },
     yearDropdownItemText: {
       color: brand.ink,
-      fontWeight: "700",
-      fontSize: s(13),
-      textAlign: "center",
+      fontWeight: "600",
     },
     yearDropdownItemTextActive: {
       color: brand.primary,
       fontWeight: "700",
-    },
-
-    bookingCostPanel: {
-      backgroundColor: brand.sand,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: brand.sandDeep,
-      padding: 12,
-      gap: 10,
-    },
-    bookingPaymentRow: {
-      flexDirection: "row",
-      gap: 12,
-      flexWrap: "wrap",
-    },
-    bookingPaymentRowStacked: {
-      flexDirection: "column",
-    },
-    bookingPaymentCol: {
-      flex: 1,
-      minWidth: 120,
-      gap: 4,
-    },
-    bookingPaymentLabel: {
-      textAlign: "center",
-      fontSize: s(12),
-      fontWeight: "700",
-      color: brand.ink,
-    },
-    bookingPaymentInput: {
-      textAlign: "center",
-      borderWidth: 1,
-      borderColor: brand.sandDeep,
-      borderRadius: 8,
-      paddingHorizontal: 10,
-      paddingVertical: 8,
-      fontSize: s(14),
-      color: brand.ink,
-      backgroundColor: brand.white,
-      width: "100%",
-    },
-    bookingPaymentRemaining: {
-      textAlign: "center",
-      fontSize: s(16),
-      fontWeight: "700",
-      color: brand.primary,
-      paddingVertical: 8,
     },
   });
 }
