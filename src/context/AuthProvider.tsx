@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { Session } from "@supabase/supabase-js";
+import * as QueryParams from "expo-auth-session/build/QueryParams";
 import * as Linking from "expo-linking";
 import * as LocalAuthentication from "expo-local-authentication";
 import * as WebBrowser from "expo-web-browser";
@@ -132,7 +133,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const signInWithGoogle = useCallback(async () => {
-    const redirectTo = Linking.createURL("auth/callback");
+    const redirectTo = Linking.createURL("callback");
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
@@ -140,22 +141,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         redirectTo,
       },
     });
-    console.log("Google OAuth URL:", {data, error, redirectTo});
     if (error) throw error;
     if (!data.url) throw new Error("Δεν ήταν δυνατή η δημιουργία σύνδεσης με Google.");
 
     const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
     if (result.type !== "success") return;
 
-    const { queryParams } = Linking.parse(result.url);
-    const code = queryParams?.code;
-    if (typeof code !== "string") {
-      throw new Error("Δεν ελήφθη κωδικός σύνδεσης από το Google.");
+    const { params, errorCode } = QueryParams.getQueryParams(result.url);
+    if (errorCode) {
+      throw new Error(errorCode);
     }
 
-    const { error: exchangeError } =
-      await supabase.auth.exchangeCodeForSession(code);
-    if (exchangeError) throw exchangeError;
+    const accessToken = params.access_token;
+    const refreshToken = params.refresh_token;
+    if (!accessToken || !refreshToken) {
+      throw new Error("Δεν ελήφθη session από το Google.");
+    }
+
+    const { error: sessionError } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+    if (sessionError) throw sessionError;
   }, []);
 
   return (
