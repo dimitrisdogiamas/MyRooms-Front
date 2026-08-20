@@ -1,5 +1,7 @@
 import { supabase } from "@/lib/supabase";
-import { Alert, Share, Platform } from "react-native";
+import { Alert, Share } from "react-native";
+import * as FileSystem from "expo-file-system/legacy";
+import * as Sharing from "expo-sharing";
 
 type ExportData = {
   version: 1;
@@ -10,6 +12,16 @@ type ExportData = {
   rooms_prices: unknown[];
   expenses: unknown[];
 };
+
+function errorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error && err.message) return err.message;
+  if (err && typeof err === "object" && "message" in err) {
+    const msg = (err as { message: unknown }).message;
+    if (typeof msg === "string" && msg) return msg;
+  }
+  if (typeof err === "string" && err) return err;
+  return fallback;
+}
 
 export async function exportAllData(): Promise<boolean> {
   const { data: { user } } = await supabase.auth.getUser();
@@ -23,7 +35,13 @@ export async function exportAllData(): Promise<boolean> {
     supabase.from("expenses").select("*"),
   ]);
 
-  if (properties.error) throw properties.error;
+  const queryError =
+    properties.error ??
+    rooms.error ??
+    bookings.error ??
+    prices.error ??
+    expenses.error;
+  if (queryError) throw queryError;
 
   const propertyIds = (properties.data ?? []).map((p: { id: string }) => p.id);
 
@@ -57,24 +75,23 @@ export async function exportAllData(): Promise<boolean> {
   const date = new Date().toISOString().slice(0, 10);
   const filename = `my-rooms-backup-${date}.json`;
 
-  let FileSystem: typeof import("expo-file-system/legacy") | null = null;
-  try {
-    FileSystem = require("expo-file-system/legacy");
-  } catch {
-    // no native module - fall back to sharing raw JSON
+  if (!FileSystem.cacheDirectory) {
+    await Share.share({ message: json, title: filename });
+    return true;
   }
 
-  if (FileSystem?.cacheDirectory) {
-    const path = `${FileSystem.cacheDirectory}${filename}`;
-    await FileSystem.writeAsStringAsync(path, json);
-    if (Platform.OS === "android") {
-      // Android: React Native's Share ignores `url`; only `message` works.
-      await Share.share({ message: json, title: filename });
-    } else {
-      await Share.share({ url: path, title: filename });
-    }
+  const path = `${FileSystem.cacheDirectory}${filename}`;
+  await FileSystem.writeAsStringAsync(path, json);
+
+  // Prefer file sharing — Android Share.share({ message: hugeJson }) often fails.
+  if (await Sharing.isAvailableAsync()) {
+    await Sharing.shareAsync(path, {
+      mimeType: "application/json",
+      dialogTitle: filename,
+      UTI: "public.json",
+    });
   } else {
-    await Share.share({ message: json, title: filename });
+    await Share.share({ url: path, title: filename });
   }
 
   return true;
@@ -142,10 +159,7 @@ export async function importData(): Promise<boolean> {
               Alert.alert("Επιτυχία", "Τα δεδομένα εισήχθησαν!");
               resolve(true);
             } catch (err) {
-              Alert.alert(
-                "Σφάλμα",
-                err instanceof Error ? err.message : "Αποτυχία εισαγωγής",
-              );
+              Alert.alert("Σφάλμα", errorMessage(err, "Αποτυχία εισαγωγής"));
               resolve(false);
             }
           },
