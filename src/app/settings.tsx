@@ -14,6 +14,7 @@ import { Alert, Pressable,
   View,
 } from "react-native";
 import { useAuth } from "@/context/AuthProvider";
+import { exportAllData, importData } from "@/lib/dataTransfer";
 
 export default function SettingsScreen() {
   const { settings, setSettings, saveSettings } = useSettings();
@@ -215,6 +216,35 @@ export default function SettingsScreen() {
           <Text style={styles.saveButtonText}>Αποσύνδεση</Text>
         </Pressable>
 
+        <Text style={styles.sectionTitle}>Δεδομένα</Text>
+        <View style={styles.card}>
+          <Pressable
+            style={styles.dataBtn}
+            onPress={async () => {
+              try {
+                await exportAllData();
+              } catch (err) {
+                Alert.alert("Σφάλμα", err instanceof Error ? err.message : "Αποτυχία εξαγωγής");
+              }
+            }}
+          >
+            <Text style={styles.dataBtnText}>📤 Εξαγωγή δεδομένων</Text>
+          </Pressable>
+          <View style={styles.divider} />
+          <Pressable
+            style={styles.dataBtn}
+            onPress={async () => {
+              try {
+                await importData();
+              } catch (err) {
+                Alert.alert("Σφάλμα", err instanceof Error ? err.message : "Αποτυχία εισαγωγής");
+              }
+            }}
+          >
+            <Text style={styles.dataBtnText}>📥 Εισαγωγή δεδομένων</Text>
+          </Pressable>
+        </View>
+
         <Text style={styles.sectionTitle}>Σχετικά</Text>
         <View style={styles.card}>
           <Text style={styles.meta}>my-rooms · v1.0.0</Text>
@@ -366,6 +396,15 @@ function createStyles(scale: number, brand: BrandColors, compactMode: boolean) {
       color: brand.onAccent,
       fontWeight: "700",
       fontSize: s(16),
+    },
+    dataBtn: {
+      paddingVertical: compactMode ? 12 : 14,
+      alignItems: "center",
+    },
+    dataBtnText: {
+      fontSize: s(15),
+      fontWeight: "600",
+      color: brand.primary,
     },
   });
 }

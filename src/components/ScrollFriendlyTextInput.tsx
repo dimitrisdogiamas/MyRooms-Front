@@ -9,7 +9,6 @@ import {
 
 type Props = TextInputProps & {
   containerStyle?: StyleProp<ViewStyle>;
-  debugId?: string;
 };
 
 /**
@@ -18,23 +17,15 @@ type Props = TextInputProps & {
  */
 export function ScrollFriendlyTextInput({
   containerStyle,
-  onFocus,
-  onBlur,
   style,
   autoFocus,
-  debugId,
   ...rest
 }: Props) {
   const ref = useRef<TextInput>(null);
 
   return (
     <View style={containerStyle}>
-      <TextInput
-        ref={ref}
-        style={style}
-        autoFocus={autoFocus}
-        {...rest}
-      />
+      <TextInput ref={ref} style={style} autoFocus={autoFocus} {...rest} />
     </View>
   );
 }
