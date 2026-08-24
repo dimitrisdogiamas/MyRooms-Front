@@ -1,8 +1,8 @@
+import type { Booking } from "@/components/BookingsList";
+import type { Room } from "@/components/RoomsSelector";
 import { addDays } from "./bookingInsights";
 import type { Expense } from "./expenses";
 import { getPriceForNight, type RoomPricing } from "./roomPricing";
-import type { Booking } from "@/components/BookingsList";
-import type { Room } from "@/components/RoomsSelector";
 
 export type RoomYearStats = {
   roomId: string;

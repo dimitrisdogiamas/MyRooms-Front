@@ -80,7 +80,7 @@ export default function Register() {
         <DismissKeyboard style={styles.container}>
           <Text style={styles.title}>Register to my-accomondations</Text>
 
-          <View style={styles.card}>
+          <View style={styles.card} pointerEvents="box-none">
             <Text style={styles.subtitle}>Εγγραφή στον λογαριασμό σου</Text>
             <TextInput
               style={styles.input}

@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import {
   Keyboard,
   Pressable,
+  StyleSheet,
+  View,
   type StyleProp,
   type ViewStyle,
 } from "react-native";
@@ -15,7 +17,16 @@ type DismissKeyboardProps = {
 export function DismissKeyboard({ children, style }: DismissKeyboardProps) {
   return (
     <Pressable style={style} onPress={Keyboard.dismiss} accessible={false}>
-      {children}
+      <View pointerEvents="box-none" style={styles.fill}>
+        {children}
+      </View>
     </Pressable>
   );
 }
+
+const styles = StyleSheet.create({
+  fill: {
+    width: "100%",
+    flexGrow: 1,
+  },
+});

@@ -1054,6 +1054,13 @@ export default function PropertyScreen() {
                             ? mark.color
                             : undefined;
                         const onStay = Boolean(bg);
+                        const billedNight = onStay || isSplit || isArrival;
+                        const hasPriceRow = roomPrices.some(
+                          (p) =>
+                            p.room_id === room.id &&
+                            p.start_date.slice(0, 10) <= date.dateString &&
+                            p.end_date.slice(0, 10) >= date.dateString,
+                        );
                         const textColor =
                           isSplit || onStay
                             ? brand.onAccent
@@ -1114,7 +1121,11 @@ export default function PropertyScreen() {
                                 },
                               ]}
                             >
-                              {price > 0 ? `${price}€` : " "}
+                              {price > 0
+                                ? `${price}€`
+                                : billedNight && hasPriceRow
+                                  ? "0€"
+                                  : " "}
                             </Text>
                           </Pressable>
                         );
@@ -1304,7 +1315,8 @@ export default function PropertyScreen() {
           style={styles.modalOverlay}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          <View
+          <Pressable style={StyleSheet.absoluteFill} onPress={Keyboard.dismiss} />
+          <Pressable
             style={[
               styles.bookingModalPanel,
               {
@@ -1312,6 +1324,7 @@ export default function PropertyScreen() {
                 maxHeight: winHeight * 0.9,
               },
             ]}
+            onPress={Keyboard.dismiss}
           >
             <Text style={styles.bookingModalTitle}>Νέα κράτηση</Text>
             {bookingDraft ? (
@@ -1319,7 +1332,7 @@ export default function PropertyScreen() {
                 ref={bookingScrollRef}
                 style={styles.bookingModalScroll}
                 contentContainerStyle={styles.bookingModalScrollContent}
-                keyboardShouldPersistTaps="always"
+                keyboardShouldPersistTaps="handled"
                 keyboardDismissMode="on-drag"
                 onScrollBeginDrag={Keyboard.dismiss}
                 showsVerticalScrollIndicator={false}
@@ -1539,7 +1552,7 @@ export default function PropertyScreen() {
                 </View>
               </ScrollView>
             ) : null}
-          </View>
+          </Pressable>
         </KeyboardAvoidingView>
       </Modal>
 
@@ -1558,7 +1571,7 @@ export default function PropertyScreen() {
               ref={pricingScrollRef}
               style={styles.pricingModalScroll}
               contentContainerStyle={styles.pricingModalScrollContent}
-              keyboardShouldPersistTaps="always"
+              keyboardShouldPersistTaps="handled"
               keyboardDismissMode="on-drag"
               onScrollBeginDrag={Keyboard.dismiss}
               showsVerticalScrollIndicator

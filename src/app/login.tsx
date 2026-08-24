@@ -74,7 +74,7 @@ export default function Login() {
           <Text style={styles.title}>my-accomondations</Text>
           <Text style={styles.subtitle}>Σύνδεση στον λογαριασμό σου</Text>
 
-          <View style={styles.card}>
+          <View style={styles.card} pointerEvents="box-none">
             <Text style={styles.label}>Email</Text>
             <TextInput
               style={styles.input}
