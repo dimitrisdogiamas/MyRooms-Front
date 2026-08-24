@@ -18,9 +18,6 @@ import {
 
 } from "react-native";
 import { type BrandColors } from "@/constants/theme";
-import { supabase } from "@/lib/supabase";
-
-
 
 export default function Register() {
   const { settings } = useSettings();

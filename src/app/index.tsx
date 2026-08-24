@@ -229,7 +229,7 @@ const PropertiesList = () => {
     if (!name || saving) return;
 
     setSaving(true);
-    const { error } = await supabase.from("properties").insert([{ name }]);
+    const { error } = await supabase.from("properties").insert([{ name, user_id: (await supabase.auth.getUser()).data.user?.id ?? "" }]);
     setSaving(false);
 
     if (error) {

@@ -1,13 +1,17 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { Session } from "@supabase/supabase-js";
-import * as QueryParams from "expo-auth-session/build/QueryParams";
 import * as Linking from "expo-linking";
 import * as LocalAuthentication from "expo-local-authentication";
 import * as WebBrowser from "expo-web-browser";
+import { createSessionFromUrl } from "@/lib/authSession";
 import { supabase } from "@/lib/supabase";
 import { useSettings } from "./SettingsProvider";
 
 WebBrowser.maybeCompleteAuthSession();
+
+function authRedirectTo() {
+  return Linking.createURL("callback");
+}
 
 type AuthContextType = {
   session: Session | null;
@@ -84,6 +88,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [settingsReady, session, settings.biometricLock]);
 
+  // Email confirm / magic-link / password-reset deep links.
+  useEffect(() => {
+    let cancelled = false;
+
+    const handleUrl = async (url: string | null) => {
+      if (!url || cancelled) return;
+      try {
+        await createSessionFromUrl(url);
+      } catch (err) {
+        console.error("Auth deep link failed:", err);
+      }
+    };
+
+    void Linking.getInitialURL().then(handleUrl);
+    const sub = Linking.addEventListener("url", ({ url }) => {
+      void handleUrl(url);
+    });
+
+    return () => {
+      cancelled = true;
+      sub.remove();
+    };
+  }, []);
+
   const signIn = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -102,7 +130,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const register = useCallback(async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signUp({
       options: {
-        emailRedirectTo: "myrooms://login",
+        emailRedirectTo: authRedirectTo(),
       },
       email,
       password,
@@ -133,7 +161,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const signInWithGoogle = useCallback(async () => {
-    const redirectTo = Linking.createURL("callback");
+    const redirectTo = authRedirectTo();
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
@@ -147,22 +175,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
     if (result.type !== "success") return;
 
-    const { params, errorCode } = QueryParams.getQueryParams(result.url);
-    if (errorCode) {
-      throw new Error(errorCode);
-    }
-
-    const accessToken = params.access_token;
-    const refreshToken = params.refresh_token;
-    if (!accessToken || !refreshToken) {
-      throw new Error("Δεν ελήφθη session από το Google.");
-    }
-
-    const { error: sessionError } = await supabase.auth.setSession({
-      access_token: accessToken,
-      refresh_token: refreshToken,
-    });
-    if (sessionError) throw sessionError;
+    await createSessionFromUrl(result.url);
   }, []);
 
   return (

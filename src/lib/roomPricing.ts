@@ -204,7 +204,7 @@ export async function applyRoomPriceRange(
 ): Promise<void> {
   const start = toDateOnly(rangeStart);
   const end = toDateOnly(rangeEndInclusive);
-  if (end < start || !Number.isFinite(pricePerNight) || pricePerNight <= 0) {
+  if (end < start || !Number.isFinite(pricePerNight) || pricePerNight < 0) {
     return;
   }
 

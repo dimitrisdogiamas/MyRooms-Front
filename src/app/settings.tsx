@@ -224,7 +224,16 @@ export default function SettingsScreen() {
               try {
                 await exportAllData();
               } catch (err) {
-                Alert.alert("Σφάλμα", err instanceof Error ? err.message : "Αποτυχία εξαγωγής");
+                const message =
+                  err instanceof Error
+                    ? err.message
+                    : err &&
+                        typeof err === "object" &&
+                        "message" in err &&
+                        typeof (err as { message: unknown }).message === "string"
+                      ? (err as { message: string }).message
+                      : "Αποτυχία εξαγωγής";
+                Alert.alert("Σφάλμα", message);
               }
             }}
           >
