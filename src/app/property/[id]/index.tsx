@@ -252,7 +252,7 @@ export default function PropertyScreen() {
       bookingDraft.endDate,
     );
     const parsed = Number.parseFloat(bookingPrice.replace(",", "."));
-    if (Number.isFinite(parsed) && parsed > 0) {
+    if (Number.isFinite(parsed) && parsed >= 0) {
       return parsed * nights;
     }
     return getBookingIncome(
@@ -687,7 +687,7 @@ export default function PropertyScreen() {
       end_date: bookingDraft.endDate,
     };
     const parsedPrice = Number.parseFloat(bookingPrice.replace(",", "."));
-    const hasUserPrice = Number.isFinite(parsedPrice) && parsedPrice > 0;
+    const hasUserPrice = Number.isFinite(parsedPrice) && parsedPrice >= 0;
     const depositValue = Number.parseFloat(deposit.replace(",", ".")) || 0;
     const settlementParsed = Number.parseFloat(settlement.replace(",", "."));
     const settlementValue =
