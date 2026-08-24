@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { Session } from "@supabase/supabase-js";
+import { makeRedirectUri } from "expo-auth-session";
 import * as Linking from "expo-linking";
 import * as LocalAuthentication from "expo-local-authentication";
 import * as WebBrowser from "expo-web-browser";
@@ -10,7 +11,7 @@ import { useSettings } from "./SettingsProvider";
 WebBrowser.maybeCompleteAuthSession();
 
 function authRedirectTo() {
-  return Linking.createURL("callback");
+  return makeRedirectUri({ path: "callback" });
 }
 
 type AuthContextType = {
@@ -129,13 +130,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const register = useCallback(async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
       options: {
         emailRedirectTo: authRedirectTo(),
       },
-      email,
-      password,
     });
     if (error) throw error;
+
+    // Existing user: Supabase often returns no error and no session.
+    if (!data.session && (!data.user || (data.user.identities?.length ?? 0) === 0)) {
+      throw new Error(
+        "Υπάρχει ήδη λογαριασμός με αυτό το email. Δοκίμασε σύνδεση.",
+      );
+    }
+
     return !data.session;
   }, []);
 

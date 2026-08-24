@@ -1,23 +1,22 @@
-import { useState, useMemo } from "react";
-import { router } from "expo-router";
+import { DismissKeyboard } from "@/components/DismissKeyboard";
+import { type BrandColors } from "@/constants/theme";
 import { useAuth } from "@/context/AuthProvider";
 import { useSettings } from "@/context/SettingsProvider";
 import { useBrand } from "@/hooks/use-brand";
 import { fs } from "@/lib/typography";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { DismissKeyboard } from "@/components/DismissKeyboard";
+import { router } from "expo-router";
+import { useMemo, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
+  StyleSheet,
   Text,
   TextInput,
   View,
-  StyleSheet,
-  Pressable,
-
 } from "react-native";
-import { type BrandColors } from "@/constants/theme";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function Register() {
   const { settings } = useSettings();
@@ -32,7 +31,6 @@ export default function Register() {
   const [busy, setBusy] = useState(false);
 
   async function onSubmit() {
-
     const trimmedEmail = email.trim().toLowerCase();
 
     if (!trimmedEmail || !password) {
@@ -41,7 +39,10 @@ export default function Register() {
     }
 
     if (password.length < 6) {
-      Alert.alert("Σφάλμα", "Ο κωδικός πρέπει να έχει τουλάχιστον 6 χαρακτήρες.");
+      Alert.alert(
+        "Σφάλμα",
+        "Ο κωδικός πρέπει να έχει τουλάχιστον 6 χαρακτήρες.",
+      );
       return;
     }
 
@@ -59,9 +60,11 @@ export default function Register() {
             },
           ],
         );
+        return;
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Αποτυχία εγγραφής.";
+      const message =
+        error instanceof Error ? error.message : "Αποτυχία εγγραφής.";
       Alert.alert("Σφάλμα εγγραφής", message);
     } finally {
       setBusy(false);
@@ -100,13 +103,8 @@ export default function Register() {
               secureTextEntry
               textContentType="newPassword"
               editable={!busy}
-
             />
-            <Pressable
-              style={styles.button}
-              disabled={busy}
-              onPress={onSubmit}
-            >
+            <Pressable style={styles.button} disabled={busy} onPress={onSubmit}>
               <Text style={styles.buttonText}>
                 {busy ? "Περιμένετε..." : "Εγγραφή"}
               </Text>
