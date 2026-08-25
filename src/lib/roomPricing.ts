@@ -78,7 +78,7 @@ export function getPriceForNight(
       periodLengthDays(a.start_date, a.end_date) -
       periodLengthDays(b.start_date, b.end_date),
   );
-  return matches[0]?.price_per_night || 0;
+  return matches[0]?.price_per_night ?? 0;
 }
 
 export function getBookingNightPrices(

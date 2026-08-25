@@ -8,7 +8,7 @@ import { getBookingIncome, type RoomPricing } from "@/lib/roomPricing";
 import { supabase } from "@/lib/supabase";
 import { fs } from "@/lib/typography";
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
 type BookingInfoModalProps = {
   visible: boolean;
