@@ -7,8 +7,8 @@ import { addDays } from "@/lib/bookingInsights";
 import { getBookingIncome, type RoomPricing } from "@/lib/roomPricing";
 import { supabase } from "@/lib/supabase";
 import { fs } from "@/lib/typography";
-import { useEffect, useMemo, useState } from "react";
-import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 type BookingInfoModalProps = {
   visible: boolean;
@@ -18,6 +18,7 @@ type BookingInfoModalProps = {
   pressedDate: string;
   roomPrices: RoomPricing[];
   rooms?: Room[];
+  onEdit?: (booking: Booking) => void;
 };
 
 function countNights(start: string, end: string): number {
@@ -46,6 +47,7 @@ export function BookingInfoModal({
   pressedDate,
   roomPrices,
   rooms = [],
+  onEdit,
 }: BookingInfoModalProps) {
   const { settings } = useSettings();
   const brand = useBrand();
@@ -127,7 +129,6 @@ export function BookingInfoModal({
     onChanged?.();
     onClose();
   }
-
   return (
     <Modal
       visible={visible}
@@ -137,7 +138,17 @@ export function BookingInfoModal({
     >
       <View style={styles.overlay}>
         <View style={styles.panel}>
-          <Text style={styles.title}>Κράτηση</Text>
+          <View style={{ flexDirection: "row", justifyContent: "flex-start", alignItems: "center", gap: 80 }}>
+            <Pressable
+              onPress={() => {
+                onEdit?.(booking);
+              }}
+            >
+              <Text style={styles.icon}>✏️</Text>
+            </Pressable>
+
+            <Text style={styles.title}>Κράτηση</Text>
+            </View>
           {roomName ? <Text style={styles.subtitle}>{roomName}</Text> : null}
 
           <View style={styles.card}>
@@ -357,5 +368,9 @@ function createStyles(scale: number, brand: BrandColors) {
       fontWeight: "700",
       fontSize: s(15),
     },
+
+    icon: {
+      fontSize: s(24),
+    }
   });
 }
