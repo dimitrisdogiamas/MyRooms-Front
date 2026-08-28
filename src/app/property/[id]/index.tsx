@@ -61,7 +61,7 @@ type RoomAvailability = {
 
 type RoomsAvailability = Record<string, RoomAvailability>;
 
-type BookingDraft = {
+export type BookingDraft = {
   room: Room;
   startDate: string;
   endDate: string;
