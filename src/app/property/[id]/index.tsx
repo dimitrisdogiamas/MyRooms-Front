@@ -1701,6 +1701,7 @@ export default function PropertyScreen() {
             </Text>
             <Calendar
               enableSwipeMonths
+              firstDay={1}
               onDayPress={(day) => {
                 if (priceDateField === "start") setPriceStart(day.dateString);
                 if (priceDateField === "end") setPriceEnd(day.dateString);

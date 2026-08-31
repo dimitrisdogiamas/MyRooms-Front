@@ -523,7 +523,8 @@ const PropertiesList = () => {
               {datePickerField === "arrivals" ? "Άφιξη" : "Αναχώρηση"}
             </Text>
             <Calendar
-              enableSwipeMonths
+                enableSwipeMonths
+                firstDay={1}
               current={
                 (datePickerField === "arrivals" ? arrivals : departures) ||
                 undefined

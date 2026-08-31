@@ -291,6 +291,7 @@ export function ExpensesProp({
           <View style={styles.pickerPanel}>
             <Text style={styles.formLabel}>Ημερομηνία εξόδου</Text>
             <Calendar
+              firstDay={1}
               enableSwipeMonths
               markedDates={
                 date
