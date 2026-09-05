@@ -119,7 +119,8 @@ export default function Login() {
               onPress={() => router.push("/register")}
             >
               <Text style={styles.buttonText}>Εγγραφή</Text>
-            {/* </Pressable>
+            </Pressable>
+            {/*
             <Pressable
               style={[styles.button, busy && styles.buttonDisabled]}
               disabled={busy}
