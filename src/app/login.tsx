@@ -119,14 +119,14 @@ export default function Login() {
               onPress={() => router.push("/register")}
             >
               <Text style={styles.buttonText}>Εγγραφή</Text>
-            </Pressable>
+            {/* </Pressable>
             <Pressable
               style={[styles.button, busy && styles.buttonDisabled]}
               disabled={busy}
               onPress={() => void onGoogleSignIn()}
             >
               <Text style={styles.buttonText}>Σύνδεση με Google</Text>
-            </Pressable>
+            </Pressable> */}
           </View>
         </DismissKeyboard>
       </KeyboardAvoidingView>
