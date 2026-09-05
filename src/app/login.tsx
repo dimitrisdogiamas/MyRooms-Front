@@ -120,13 +120,14 @@ export default function Login() {
             >
               <Text style={styles.buttonText}>Εγγραφή</Text>
             </Pressable>
+            {/*
             <Pressable
               style={[styles.button, busy && styles.buttonDisabled]}
               disabled={busy}
               onPress={() => void onGoogleSignIn()}
             >
               <Text style={styles.buttonText}>Σύνδεση με Google</Text>
-            </Pressable>
+            </Pressable> */}
           </View>
         </DismissKeyboard>
       </KeyboardAvoidingView>
