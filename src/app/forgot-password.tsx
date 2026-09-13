@@ -74,9 +74,14 @@ export default function ForgotPassword() {
               onChangeText={setEmail}
               placeholder="Συμπλήρωσε το email σου"
               autoCapitalize="none"
-              
+              keyboardType="email-address"
             />
-
+            <Pressable
+              style={[styles.button, !email && styles.buttonDisabled]}
+              onPress={onSubmit}
+            >
+              <Text style={styles.buttonText}>Αποστολή</Text>
+            </Pressable>
           </View>
         </DismissKeyboard>
 
@@ -104,10 +109,11 @@ function createStyles(scale: number, brand: BrandColors) {
       gap: 12,
     },
     title: {
-      fontSize: s(32),
+      fontSize: s(25),
       fontWeight: "700",
       color: brand.ink,
       textAlign: "center",
+      marginTop: 20,
     },
 
     subtitle: {
@@ -115,7 +121,48 @@ function createStyles(scale: number, brand: BrandColors) {
       color: brand.claySoft,
       marginBottom: 12,
       textAlign: "center",
-    }
+    },
+    card: {
+      backgroundColor: brand.white,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: brand.sandDeep,
+      padding: 20,
+      gap: 10,
+    },
 
+    label: {
+      fontSize: s(13),
+      fontWeight: "700",
+      color: brand.ink,
+      marginTop: 4,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: brand.sandDeep,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      fontSize: s(15),
+      color: brand.ink,
+      backgroundColor: brand.sand,
+    },
+    button: {
+      marginTop: 12,
+      backgroundColor: brand.primary,
+      borderRadius: 14,
+      paddingVertical: 14,
+      alignItems: "center",
+      justifyContent: "center",
+      minHeight: 50,
+    },
+    buttonDisabled: {
+      opacity: 0.7,
+    },
+    buttonText: {
+      color: brand.onAccent,
+      fontWeight: "700",
+      fontSize: s(16),
+    },
   });
 }

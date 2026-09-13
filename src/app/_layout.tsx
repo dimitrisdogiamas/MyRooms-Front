@@ -5,6 +5,7 @@ import { useResolvedScheme } from "@/hooks/use-resolved-scheme";
 import { useBrand } from "@/hooks/use-brand";
 import { registerForPushNotifications } from "@/lib/notification";
 import "@/lib/calendarLocale";
+import { router } from "expo-router";
 import { DarkTheme, DefaultTheme, ThemeProvider, Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
@@ -119,6 +120,7 @@ function RootLayoutNav() {
           <Stack.Screen name="login" options={{ headerShown: false }} />
           <Stack.Screen name="register" options={{ headerShown: false }} />
           <Stack.Screen name="callback" options={{ headerShown: false }} />
+          <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
         </Stack.Protected>
       </Stack>
     </ThemeProvider>
