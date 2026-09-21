@@ -11,7 +11,10 @@ import { useSettings } from "./SettingsProvider";
 WebBrowser.maybeCompleteAuthSession();
 
 function authRedirectTo() {
-  return makeRedirectUri({ path: "callback" });
+  return makeRedirectUri({
+    scheme: "myaccomondations",
+    path: "auth/callback"
+  });
 }
 
 type AuthContextType = {
