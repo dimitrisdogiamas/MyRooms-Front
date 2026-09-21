@@ -120,12 +120,20 @@ export default function Login() {
             >
               <Text style={styles.buttonText}>Εγγραφή</Text>
             </Pressable>
+          </View>
+
+
+
+          <View style={styles.forgotPassword} pointerEvents="box-none">
+            <Text style={styles.subtitle}>
+              Ξέχασες τον κωδικό σου?
+            </Text>
             <Pressable
               style={[styles.button, busy && styles.buttonDisabled]}
               disabled={busy}
-              onPress={() => void onGoogleSignIn()}
+              onPress={() => router.push("/forgot-password")}
             >
-              <Text style={styles.buttonText}>Σύνδεση με Google</Text>
+              <Text style={styles.buttonText}>Επαναφορά κωδικού</Text>
             </Pressable>
           </View>
         </DismissKeyboard>
@@ -150,13 +158,15 @@ export default function Login() {
       paddingHorizontal: 24,
       gap: 12,
     },
-    title: {
-      fontSize: s(32),
+      title: {
+      marginTop: 20,
+      fontSize: s(25),
       fontWeight: "700",
       color: brand.ink,
       textAlign: "center",
     },
-    subtitle: {
+      subtitle: {
+      marginTop: 20,
       fontSize: s(15),
       color: brand.claySoft,
       textAlign: "center",
@@ -167,6 +177,7 @@ export default function Login() {
       borderRadius: 20,
       borderWidth: 1,
       borderColor: brand.sandDeep,
+      marginTop: 40,
       padding: 20,
       gap: 10,
     },
@@ -202,7 +213,11 @@ export default function Login() {
       color: brand.onAccent,
       fontWeight: "700",
       fontSize: s(16),
-    },
+      },
+      forgotPassword: {
+        marginTop: 40,
+        justifyContent: "center",
+      }
   });
 
 }
