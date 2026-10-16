@@ -7,12 +7,9 @@
     "icon": "./assets/images/icon.png",
     "scheme": "myaccomondations",
     "userInterfaceStyle": "automatic",
-    "ios": {
-      "icon": "./assets/expo.icon"
-    },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#1C2A32",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -35,6 +32,8 @@
       "expo-web-browser",
       "expo-dev-client",
       "expo-notifications",
+      "expo-image",
+      "expo-sharing",
       [
         "expo-splash-screen",
         {
