@@ -1,6 +1,6 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const APP_NAME = "Mel&Dim";
+const APP_NAME = "Kataluma";
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 const EXPO_BATCH_SIZE = 100; // Expo accepts at most 100 messages per request
 

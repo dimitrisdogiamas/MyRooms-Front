@@ -29,7 +29,7 @@ function LockScreen({
 
   return (
     <View style={[styles.lockRoot, { backgroundColor: brand.sand }]}>
-      <Text style={[styles.lockTitle, { color: brand.ink }]}>my-rooms</Text>
+      <Text style={[styles.lockTitle, { color: brand.ink }]}>Kataluma</Text>
       <Text style={[styles.lockSubtitle, { color: brand.claySoft }]}>
         Ξεκλείδωσε με βιομετρικά για να συνεχίσεις
       </Text>

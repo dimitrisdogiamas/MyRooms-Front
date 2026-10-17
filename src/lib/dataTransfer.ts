@@ -73,7 +73,7 @@ export async function exportAllData(): Promise<boolean> {
 
   const json = JSON.stringify(payload, null, 2);
   const date = new Date().toISOString().slice(0, 10);
-  const filename = `my-rooms-backup-${date}.json`;
+  const filename = `kataluma-backup-${date}.json`;
 
   if (!FileSystem.cacheDirectory) {
     await Share.share({ message: json, title: filename });

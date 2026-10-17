@@ -256,7 +256,7 @@ export default function SettingsScreen() {
 
         <Text style={styles.sectionTitle}>Σχετικά</Text>
         <View style={styles.card}>
-          <Text style={styles.meta}>my-rooms · v1.0.0</Text>
+          <Text style={styles.meta}>Kataluma · v1.0.0</Text>
         </View>
       </DismissKeyboard>
     </ScrollView>

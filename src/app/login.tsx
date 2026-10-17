@@ -71,7 +71,7 @@ export default function Login() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <DismissKeyboard style={styles.container}>
-          <Text style={styles.title}>my-accomondations</Text>
+          <Text style={styles.title}>Kataluma</Text>
           <Text style={styles.subtitle}>Σύνδεση στον λογαριασμό σου</Text>
 
           <View style={styles.card} pointerEvents="box-none">
