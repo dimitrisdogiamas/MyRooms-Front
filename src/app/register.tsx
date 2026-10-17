@@ -78,7 +78,7 @@ export default function Register() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <DismissKeyboard style={styles.container}>
-          <Text style={styles.title}>Register to my-accomondations</Text>
+          <Text style={styles.title}>Register to Kataluma</Text>
 
           <View style={styles.card} pointerEvents="box-none">
             <Text style={styles.subtitle}>Εγγραφή στον λογαριασμό σου</Text>
